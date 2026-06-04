@@ -118,22 +118,13 @@ async function startWebcam() {
     }
     try {
         const constraints = {
-            video: { 
-                facingMode: currentFacingMode, 
-                width: { ideal: 1280 }, 
-                height: { ideal: 720 } 
-            },
+            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
             audio: false
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
-        
-        // Memastikan video langsung diputar untuk mencegah freeze / error blank layar hitam
-        webcamElement.onloadedmetadata = () => {
-            webcamElement.play().catch(e => console.log("Autoplay ditolak browser:", e));
-        };
     } catch (err) {
-        alert("Akses kamera ditolak. Pastikan Anda mengizinkan akses kamera di browser HP Anda.");
+        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
     }
 }
 
@@ -227,7 +218,7 @@ function triggerFlashAndCapture() {
     }, 400);
 }
 
-// FUNGSI UTAMA GENERATOR CETAK LAYOUT CANVAS (PROPOSIONAL AMAN NO OVERLAP)
+// FUNGSI INTI: PEMROSESAN CETAKAN GAMBAR CANVAS DAN PENATAAN TEXT
 function captureImage() {
     const ctx = canvasElement.getContext('2d');
     canvasElement.width = webcamElement.videoWidth || 640;
@@ -240,7 +231,7 @@ function captureImage() {
     ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     
-    // Pemrosesan Efek Filter Lembut Glow (Soft Light)
+    // Pemrosesan Soft Light Glow Filter Efek
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -306,7 +297,7 @@ function captureImage() {
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // 1. Gambar Ilustrasi Pengantin Tradisional (Paling Belakang)
+    // 1. Gambar Aset Ilustrasi Pengantin
     const assetSize = canvasElement.width * 0.26;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
     const assetY = boxY - assetSize + (canvasElement.height * 0.04);
@@ -315,11 +306,11 @@ function captureImage() {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // 2. Gambar Kotak Putih Transparan Informasi Nama
+    // 2. Gambar Kotak Latar Informasi Nama (Menggunakan fillRect standar agar tidak crash di mobile browser)
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
-    // 3. MATEMATIKA STRUKTUR PENATAAN TEKS AMAN ANTI TABRAKAN
+    // Cetak Aksesoris Dekorasi Teks Ikon
     let decorSet = {
         dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
         classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
@@ -327,31 +318,27 @@ function captureImage() {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Cetak Dekorasi Kiri & Kanan Atas Kotak
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.035}px Arial`;
     ctx.textAlign = 'left';
     ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
     ctx.textAlign = 'right';
     ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
-
-    // Cetak Nama Utama "Sabrina & Raka" (Diangkat Sedikit ke Atas Menggunakan / 1.65)
     ctx.textAlign = 'center';
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
+
+    // =============================================================
+    // MODIFIKASI UTAMA: MENYUNTIKKAN FONT HANDWRITING KE CANVAS GAMBAR
+    // =============================================================
     ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.080}px 'Great Vibes', cursive`; 
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.65));
+    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
     
-    // Cetak Sub-Teks Tanggal (Ditengahkan Tepat Dibawah Garis Batas Nama Luar)
+    // Cetak Sub-Teks Informasi Tanggal Pernikahan
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.22));
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-    // Cetak Emotikon Bawah (Dipaksa Turun Maksimal Tanpa Mengganggu Area Tanggal)
-    ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `${canvasElement.width * 0.035}px Arial`;
-    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
-
-    // Ekspor Hasil Cetak Menjadi Blob Objek Gambar Tunggal
     canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
 
     webcamElement.classList.add('hidden');
@@ -373,12 +360,12 @@ async function initAudioRecorder() {
             audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Akses rekaman audio mikrofon tidak diizinkan.");
+        console.log("Pemberian izin akses mikrofon ditolak oleh pengguna.");
     }
 }
 
 recordBtn.addEventListener('click', () => {
-    if (!mediaRecorder) return alert("Mikrofon belum diaktifkan/tidak terdeteksi.");
+    if (!mediaRecorder) return alert("Perangkat mikrofon belum siap.");
     if (mediaRecorder.state === "inactive") {
         audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
     } else {
@@ -417,7 +404,7 @@ function renderGallery() {
 uploadWeddingBtn.addEventListener('click', () => {
     const namaTamu = guestNameInput.value.trim();
     if (namaTamu === "") {
-        alert("Nama pengirim tidak boleh dikosongkan!");
+        alert("Nama tidak boleh kosong!");
         guestNameInput.focus();
         return;
     }
