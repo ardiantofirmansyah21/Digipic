@@ -10,7 +10,7 @@ const controlsSection = document.getElementById('controlsSection');
 const canvas = document.getElementById('resultCanvas');
 const ctx = canvas.getContext('2d');
 
-// Load Gambar Pengantin untuk kebutuhan Canvas Render nanti
+// Inisialisasi awal gambar pengantin agar siap digambar
 const imgPengantin = new Image();
 imgPengantin.src = 'pengantin.png';
 
@@ -22,10 +22,12 @@ btnOpenPhotobooth.addEventListener('click', async () => {
             audio: false
         });
         video.srcObject = stream;
+        
+        // Sembunyikan welcome screen secara aman
         welcomeScreen.classList.add('hidden');
         controlsSection.style.display = 'flex';
     } catch (err) {
-        alert('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.');
+        alert('Gagal mengakses kamera. Silakan periksa izin kamera pada browser Anda.');
         console.error(err);
     }
 });
@@ -45,68 +47,82 @@ btnCapture.addEventListener('click', () => {
             clearInterval(interval);
             countdownEl.style.display = 'none';
             btnCapture.disabled = false;
-            capturePhoto(); // Jalankan proses ambil gambar
+            capturePhoto(); 
         }
     }, 1000);
 });
 
+// Fungsi Pendukung Membuat Kotak Sudut Tumpul Manual (Kompatibel Semua Browser)
+function drawRoundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius, y);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+}
+
 // 3. Fungsi Utama Penggabungan Gambar Kamera & Frame ke Canvas
 function capturePhoto() {
-    // Tentukan dimensi canvas resolusi tinggi (Aspek Rasio Sesuai Layar HP 9:16)
+    // Tentukan dimensi resolusi tinggi standar potret (9:16)
     canvas.width = 1080;
     canvas.height = 1920;
 
-    // Draw wajah/kamera user ke canvas latar belakang
+    // Ambil gambar live preview dari elemen video kamera
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // KORDINAT & UKURAN ELEMEN BAWAH (Disinkronkan dengan CSS)
-    const boxWidth = canvas.width * 0.85; // Lebar box teks 85% dari canvas
-    const boxHeight = 220; // Tinggi box hitam
-    const boxX = (canvas.width - boxWidth) / 2; // Posisi X center horizontal
-    const boxY = canvas.height - boxHeight - 120; // Posisi Y box agar menggantung rapi di bawah
+    // KORDINAT & UKURAN ELEMEN FRAME (Disinkronkan secara presisi)
+    const boxWidth = canvas.width * 0.85; 
+    const boxHeight = 220; 
+    const boxX = (canvas.width - boxWidth) / 2; 
+    const boxY = canvas.height - boxHeight - 250; // Jarak gantung aman dari bawah batas foto
 
-    // --- GAMBAR KARTUN PENGANTIN DI ATAS KOTAK ---
-    const pengantinWidth = 180; // Ukuran lebar gambar kartun pengantin pada canvas
-    const pengantinHeight = (imgPengantin.height / imgPengantin.width) * pengantinWidth;
+    // --- DRAW KARTUN PENGANTIN DI ATAS KOTAK ---
+    const pengantinWidth = 180; 
+    // Hitung tinggi proporsional jika gambar sudah termuat sempurna
+    const pengantinHeight = imgPengantin.height ? (imgPengantin.height / imgPengantin.width) * pengantinWidth : 180;
     const pengantinX = (canvas.width - pengantinWidth) / 2;
-    const pengantinY = boxY - pengantinHeight + 15; // Diletakkan tepat di atas koordinat Y box hitam
+    const pengantinY = boxY - pengantinHeight + 10; // Menempel rapi di sisi atas kotak hitam
 
-    if (imgPengantin.complete) {
+    if (imgPengantin.complete || imgPengantin.width > 0) {
         ctx.drawImage(imgPengantin, pengantinX, pengantinY, pengantinWidth, pengantinHeight);
     }
 
-    // --- GAMBAR KOTAK TEKS HITAM ---
-    ctx.fillStyle = 'rgba(22, 22, 22, 0.9)';
-    // Membuat bentuk kotak rounded sederhana pada canvas
-    ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 30);
-    ctx.fill();
+    // --- DRAW KOTAK TEKS HITAM ELEGAN ---
+    ctx.fillStyle = 'rgba(22, 22, 22, 0.85)';
+    drawRoundRect(ctx, boxX, boxY, boxWidth, boxHeight, 25);
 
     // --- CETAK TULISAN DI ATAS CANVAS ---
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 1. Emoticon Bintang Atas
+    // 1. Emoticon Atas
     ctx.fillStyle = '#ffd700';
-    ctx.font = '32px sans-serif';
+    ctx.font = '30px sans-serif';
     ctx.fillText('✨ ✨', canvas.width / 2, boxY + 40);
 
     // 2. Nama Pengantin (Sabrina & Raka)
     ctx.fillStyle = '#ffd700';
-    ctx.font = 'bold 52px Georgia';
+    ctx.font = 'bold 50px Georgia';
     ctx.fillText('Sabrina & Raka', canvas.width / 2, boxY + 105);
 
-    // 3. Tagline / Tanggal Pernikahan
+    // 3. Tanggal Pernikahan / Tagline
     ctx.fillStyle = '#ffffff';
-    ctx.font = '24px sans-serif';
+    ctx.font = '22px sans-serif';
     ctx.fillText('29.05.2026 — HAPPY EVER AFTER', canvas.width / 2, boxY + 165);
 
-    // 4. Emoticon Bintang Mahkota Bawah (Yang sebelumnya menutupi tulisan)
+    // 4. Emoticon Bintang Mahkota Bawah (Diposisikan Aman di Dalam Box)
     ctx.fillStyle = '#ffd700';
-    ctx.font = '32px sans-serif';
-    ctx.fillText('✨ 👑 ✨', canvas.width / 2, boxY + boxHeight + 40); // Diturunkan ke luar box atau sesuaikan area bawah
+    ctx.font = '28px sans-serif';
+    ctx.fillText('✨ 👑 ✨', canvas.width / 2, boxY + 200); 
 
-    // Tampilkan layar preview hasil unduhan
+    // Tampilkan layar preview hasil
     previewScreen.style.display = 'flex';
 }
 
@@ -115,7 +131,7 @@ btnRetake.addEventListener('click', () => {
     previewScreen.style.display = 'none';
 });
 
-// 5. Fungsi Mengunduh Hasil Foto Langsung ke Galeri HP
+// 5. Fungsi Mengunduh Gambar
 btnDownload.addEventListener('click', () => {
     const imageURI = canvas.toDataURL('image/jpeg', 0.9);
     const link = document.createElement('a');
