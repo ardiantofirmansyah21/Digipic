@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>The Wedding Celebration of Sabrina & Raka</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +21,6 @@
             min-height: 100vh;
             overflow: hidden;
         }
-        /* Kontainer Utama Aplikasi (Rasio HP) */
         .app-container {
             width: 100%;
             max-width: 450px;
@@ -46,77 +46,64 @@
             padding: 20px;
             text-align: center;
             background: #fcfbf7;
-            z-index: 10;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-            visibility: visible;
-            opacity: 1;
+            z-index: 100;
+            transition: opacity 0.3s ease;
         }
         .screen.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
+            display: none !important;
         }
         .circle-img {
-            width: 180px;
-            height: 180px;
+            width: 160px;
+            height: 160px;
             border-radius: 50%;
             object-fit: cover;
             border: 5px solid #fff;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         .subtitle {
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: #b56a25;
             margin-bottom: 10px;
         }
         .title {
-            font-size: 32px;
+            font-size: 30px;
             font-family: 'Georgia', serif;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: #2c2c2c;
         }
         .divider {
-            width: 80%;
+            width: 70%;
             height: 1px;
             background: linear-gradient(to right, transparent, #b56a25, transparent);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
         .date {
-            font-size: 15px;
+            font-size: 14px;
             color: #666;
-            letter-spacing: 1px;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
         }
         .btn-primary {
             background-color: #b56a25;
             color: #fff;
             border: none;
-            padding: 15px 35px;
-            font-size: 16px;
+            padding: 14px 30px;
+            font-size: 15px;
             font-weight: bold;
-            border-radius: 30px;
+            border-radius: 25px;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(181, 106, 37, 0.3);
-            transition: transform 0.2s;
-            z-index: 15;
-        }
-        .btn-primary:active {
-            transform: scale(0.95);
         }
 
-        /* Halaman Kamera / Photobooth */
-        .photobooth-container {
+        /* Halaman Kamera / Area Tangkapan Foto */
+        .photobooth-area {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: 82%; /* Menyisakan ruang bawah untuk tombol jepret agar tidak saling tumpang tindih */
             background-color: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden;
         }
         video {
             width: 100%;
@@ -124,53 +111,47 @@
             object-fit: cover;
         }
 
-        /* FRAME PERNIKAHAN DIGITAL */
-        .wedding-frame {
+        /* SUSUNAN OVERLAY FRAME YANG DIJAMIN RAPI */
+        .wedding-frame-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             align-items: center;
-            padding-bottom: 140px; /* Dinaikkan agar tidak tertutup tombol jepret fisik */
+            padding-bottom: 20px;
+            pointer-events: none; /* Mencegah pemblokiran klik pada layar */
         }
-
-        /* Gambar Kartun Pengantin */
         .frame-bride-groom {
-            width: 70px;
+            width: 85px; /* Ukuran gambar kartun pengantin disesuaikan agar proporsional */
             height: auto;
             margin-bottom: -5px;
             z-index: 5;
         }
-
-        /* Kotak Teks Utama */
         .frame-text-box {
-            background-color: rgba(22, 22, 22, 0.85);
+            background-color: rgba(22, 22, 22, 0.88);
             color: #fff;
-            width: 85%;
-            padding: 12px 10px;
-            border-radius: 15px;
+            width: 88%;
+            padding: 15px 10px;
+            border-radius: 16px;
             text-align: center;
-            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             z-index: 4;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .frame-stars {
             color: #ffd700;
-            font-size: 12px;
+            font-size: 11px;
+            letter-spacing: 2px;
             margin: 2px 0;
-            letter-spacing: 3px;
         }
         .frame-names {
             font-family: 'Georgia', serif;
-            font-size: 22px;
-            font-weight: normal;
+            font-size: 21px;
             color: #ffd700;
-            margin: 2px 0;
+            margin: 3px 0;
         }
         .frame-tagline {
             font-size: 9px;
@@ -179,78 +160,83 @@
             text-transform: uppercase;
         }
 
-        /* UI Kontrol: Tombol Jepret & Hitung Mundur */
-        .controls {
-            position: absolute;
-            bottom: 35px;
-            left: 0;
+        /* Kontrol Bawah */
+        .bottom-bar {
             width: 100%;
+            height: 18%;
+            background-color: #fcfbf7;
             display: flex;
             justify-content: center;
+            align-items: center;
             z-index: 20;
         }
         .btn-capture {
-            width: 75px;
-            height: 75px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             background-color: #fff;
-            border: 6px solid rgba(181, 106, 37, 0.6);
+            border: 6px solid #b56a25;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-        .btn-capture:active {
-            background-color: #ddd;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .countdown {
             position: absolute;
             top: 40%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 120px;
+            font-size: 100px;
             font-weight: bold;
             color: #ffd700;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            z-index: 30;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 80;
             display: none;
         }
 
-        /* Hasil Preview Foto / Download Screen */
+        /* Halaman Preview Hasil */
         .preview-screen {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 40;
+            background: #fcfbf7;
+            z-index: 200;
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 15px;
         }
-        #resultCanvas {
-            max-width: 100%;
-            max-height: 70vh;
+        .preview-image-container {
+            width: 100%;
+            max-height: 75vh;
             border-radius: 12px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.6);
-            margin-bottom: 25px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        #outputImage {
+            width: 100%;
+            height: auto;
+            display: block;
         }
         .preview-buttons {
             display: flex;
             gap: 15px;
-            width: 100%;
-            justify-content: center;
+            width: 90%;
         }
-        .btn-secondary {
-            background-color: #555;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 30px;
-            cursor: pointer;
+        .preview-buttons button {
+            flex: 1;
+            padding: 14px;
+            border-radius: 25px;
             font-weight: bold;
             font-size: 15px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-secondary {
+            background-color: #e0ded7;
+            color: #444;
         }
     </style>
 </head>
@@ -267,11 +253,12 @@
             <button class="btn-primary" id="btnOpenPhotobooth">✨ BUKA PHOTOBOOTH</button>
         </div>
 
-        <div class="photobooth-container">
+        <div class="photobooth-area" id="captureTarget">
             <video id="webcam" autoplay playsinline muted></video>
 
-            <div class="wedding-frame">
+            <div class="wedding-frame-overlay">
                 <img src="pengantin.png" class="frame-bride-groom" alt="Pengantin">
+                
                 <div class="frame-text-box">
                     <div class="frame-stars">✨ ✨</div>
                     <h2 class="frame-names">Sabrina & Raka</h2>
@@ -281,14 +268,16 @@
             </div>
 
             <div id="countdown" class="countdown">3</div>
+        </div>
 
-            <div class="controls" id="controlsSection" style="display: none;">
-                <button class="btn-capture" id="btnCapture" title="Ambil Foto"></button>
-            </div>
+        <div class="bottom-bar">
+            <button class="btn-capture" id="btnCapture" id="btnCapture" title="Ambil Foto"></button>
         </div>
 
         <div id="previewScreen" class="preview-screen">
-            <canvas id="resultCanvas"></canvas>
+            <div class="preview-image-container">
+                <img id="outputImage" src="" alt="Hasil Foto">
+            </div>
             <div class="preview-buttons">
                 <button class="btn-secondary" id="btnRetake">Foto Ulang</button>
                 <button class="btn-primary" id="btnDownload">💾 Simpan Foto</button>
