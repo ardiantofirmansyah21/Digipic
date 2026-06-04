@@ -47,12 +47,14 @@
             text-align: center;
             background: #fcfbf7;
             z-index: 10;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            visibility: visible;
+            opacity: 1;
         }
         .screen.hidden {
             opacity: 0;
+            visibility: hidden;
             pointer-events: none;
-            z-index: 1;
         }
         .circle-img {
             width: 180px;
@@ -99,6 +101,7 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(181, 106, 37, 0.3);
             transition: transform 0.2s;
+            z-index: 15;
         }
         .btn-primary:active {
             transform: scale(0.95);
@@ -128,29 +131,29 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Supaya tidak menghalangi klik tombol di bawah */
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             align-items: center;
-            padding-bottom: 40px; /* Jarak aman dari bawah layar */
+            padding-bottom: 140px; /* Dinaikkan agar tidak tertutup tombol jepret fisik */
         }
 
-        /* Gambar Kartun Pengantin yang Diperbaiki */
+        /* Gambar Kartun Pengantin */
         .frame-bride-groom {
-            width: 65px;
+            width: 70px;
             height: auto;
-            margin-bottom: -5px; /* Sedikit menempel harmonis dengan kotak teks di bawahnya */
+            margin-bottom: -5px;
             z-index: 5;
         }
 
         /* Kotak Teks Utama */
         .frame-text-box {
-            background-color: rgba(22, 22, 22, 0.85); /* Hitam elegan transparan */
+            background-color: rgba(22, 22, 22, 0.85);
             color: #fff;
             width: 85%;
-            padding: 15px 10px;
-            border-radius: 12px;
+            padding: 12px 10px;
+            border-radius: 15px;
             text-align: center;
             backdrop-filter: blur(5px);
             z-index: 4;
@@ -158,7 +161,7 @@
         }
         .frame-stars {
             color: #ffd700;
-            font-size: 13px;
+            font-size: 12px;
             margin: 2px 0;
             letter-spacing: 3px;
         }
@@ -166,8 +169,8 @@
             font-family: 'Georgia', serif;
             font-size: 22px;
             font-weight: normal;
-            color: #ffd700; /* Warna emas */
-            margin: 4px 0;
+            color: #ffd700;
+            margin: 2px 0;
         }
         .frame-tagline {
             font-size: 9px;
@@ -179,7 +182,7 @@
         /* UI Kontrol: Tombol Jepret & Hitung Mundur */
         .controls {
             position: absolute;
-            bottom: 25px;
+            bottom: 35px;
             left: 0;
             width: 100%;
             display: flex;
@@ -187,13 +190,13 @@
             z-index: 20;
         }
         .btn-capture {
-            width: 70px;
-            height: 70px;
+            width: 75px;
+            height: 75px;
             border-radius: 50%;
             background-color: #fff;
-            border: 5px solid rgba(181, 106, 37, 0.5);
+            border: 6px solid rgba(181, 106, 37, 0.6);
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         .btn-capture:active {
             background-color: #ddd;
@@ -206,7 +209,7 @@
             font-size: 120px;
             font-weight: bold;
             color: #ffd700;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-shadow: 0 4px 15px rgba(0,0,0,0.6);
             z-index: 30;
             display: none;
         }
@@ -218,34 +221,36 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 40;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            display: none;
         }
         #resultCanvas {
             max-width: 100%;
             max-height: 70vh;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.6);
+            margin-bottom: 25px;
         }
         .preview-buttons {
             display: flex;
             gap: 15px;
+            width: 100%;
+            justify-content: center;
         }
         .btn-secondary {
             background-color: #555;
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
+            padding: 15px 30px;
+            border-radius: 30px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 15px;
         }
     </style>
 </head>
@@ -267,7 +272,6 @@
 
             <div class="wedding-frame">
                 <img src="pengantin.png" class="frame-bride-groom" alt="Pengantin">
-                
                 <div class="frame-text-box">
                     <div class="frame-stars">✨ ✨</div>
                     <h2 class="frame-names">Sabrina & Raka</h2>
