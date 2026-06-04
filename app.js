@@ -118,13 +118,22 @@ async function startWebcam() {
     }
     try {
         const constraints = {
-            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: { 
+                facingMode: currentFacingMode, 
+                width: { ideal: 1280 }, 
+                height: { ideal: 720 } 
+            },
             audio: false
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
+        
+        // Memastikan video langsung diputar untuk mencegah freeze / error blank layar hitam
+        webcamElement.onloadedmetadata = () => {
+            webcamElement.play().catch(e => console.log("Autoplay ditolak browser:", e));
+        };
     } catch (err) {
-        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
+        alert("Akses kamera ditolak. Pastikan Anda mengizinkan akses kamera di browser HP Anda.");
     }
 }
 
@@ -218,7 +227,7 @@ function triggerFlashAndCapture() {
     }, 400);
 }
 
-// FUNGSI INTI: PEMROSESAN CETAKAN GAMBAR CANVAS DAN PENATAAN LAYOUT TEKS
+// FUNGSI UTAMA GENERATOR CETAK LAYOUT CANVAS (PROPOSIONAL AMAN NO OVERLAP)
 function captureImage() {
     const ctx = canvasElement.getContext('2d');
     canvasElement.width = webcamElement.videoWidth || 640;
@@ -231,7 +240,7 @@ function captureImage() {
     ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     
-    // Pemrosesan Soft Light Glow Filter Efek
+    // Pemrosesan Efek Filter Lembut Glow (Soft Light)
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -269,4 +278,200 @@ function captureImage() {
         }
     } else if (selectedFilter === 'bw') {
         for (let i = 0; i < data.length; i += 4) {
-            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data
+            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
+            data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
+        }
+    } else if (selectedFilter === 'vintage') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
+            data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
+            data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
+    let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
+    let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
+    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
+
+    const borderWidth = canvasElement.width * 0.04;
+    ctx.lineWidth = borderWidth;
+    ctx.strokeStyle = borderColors[selectedFrameStyle];
+    ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
+
+    const boxHeight = canvasElement.height * 0.16;
+    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
+    const boxX = borderWidth + (canvasElement.width * 0.08);
+    const boxWidth = canvasElement.width - (boxX * 2);
+
+    // 1. Gambar Ilustrasi Pengantin Tradisional (Paling Belakang)
+    const assetSize = canvasElement.width * 0.26;
+    const assetX = (canvasElement.width / 2) - (assetSize / 2);
+    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+
+    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
+        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
+    }
+
+    // 2. Gambar Kotak Putih Transparan Informasi Nama
+    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    // 3. MATEMATIKA STRUKTUR PENATAAN TEKS AMAN ANTI TABRAKAN
+    let decorSet = {
+        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
+    };
+    let currentDecor = decorSet[selectedFrameStyle];
+
+    // Cetak Dekorasi Kiri & Kanan Atas Kotak
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `${canvasElement.width * 0.035}px Arial`;
+    ctx.textAlign = 'left';
+    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'right';
+    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
+
+    // Cetak Nama Utama "Sabrina & Raka" (Diangkat Sedikit ke Atas Menggunakan / 1.65)
+    ctx.textAlign = 'center';
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `italic ${canvasElement.width * 0.080}px 'Great Vibes', cursive`; 
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.65));
+    
+    // Cetak Sub-Teks Tanggal (Ditengahkan Tepat Dibawah Garis Batas Nama Luar)
+    ctx.fillStyle = subTextColors[selectedFrameStyle];
+    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.22));
+
+    // Cetak Emotikon Bawah (Dipaksa Turun Maksimal Tanpa Mengganggu Area Tanggal)
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `${canvasElement.width * 0.035}px Arial`;
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
+
+    // Ekspor Hasil Cetak Menjadi Blob Objek Gambar Tunggal
+    canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+
+    webcamElement.classList.add('hidden');
+    canvasElement.classList.remove('hidden');
+    afterCaptureBtn.classList.remove('hidden');
+    
+    initAudioRecorder();
+}
+
+async function initAudioRecorder() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = (event) => { audioChunks.push(event.data); };
+        mediaRecorder.onstop = () => {
+            currentAudioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            audioPlayback.src = URL.createObjectURL(currentAudioBlob);
+            audioPlayback.classList.remove('hidden');
+        };
+    } catch (err) {
+        console.log("Akses rekaman audio mikrofon tidak diizinkan.");
+    }
+}
+
+recordBtn.addEventListener('click', () => {
+    if (!mediaRecorder) return alert("Mikrofon belum diaktifkan/tidak terdeteksi.");
+    if (mediaRecorder.state === "inactive") {
+        audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
+    } else {
+        mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
+    }
+});
+
+function triggerShare(blobFile) {
+    if (!blobFile) return;
+    const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }); }
+}
+function triggerDownload(blobFile) {
+    if (!blobFile) return;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
+}
+shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
+downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
+modalDownloadBtn.addEventListener('click', () => {
+    const item = galleryData.find(p => p.id === activeSelectedId);
+    if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
+    else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+});
+
+function renderGallery() {
+    weddingGalleryGrid.innerHTML = "";
+    galleryData.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-white p-2.5 rounded-xl shadow border border-stone-200/60 cursor-pointer transform hover:scale-[1.02] transition-all";
+        card.addEventListener('click', () => openGalleryModal(item.id));
+        card.innerHTML = `<div class='overflow-hidden rounded-lg aspect-[3/4]'><img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'></div><p class='text-[9px] font-medium text-stone-500 text-center mt-2 truncate px-1'>${item.label}</p>`;
+        weddingGalleryGrid.appendChild(card);
+    });
+}
+
+uploadWeddingBtn.addEventListener('click', () => {
+    const namaTamu = guestNameInput.value.trim();
+    if (namaTamu === "") {
+        alert("Nama pengirim tidak boleh dikosongkan!");
+        guestNameInput.focus();
+        return;
+    }
+
+    uploadWeddingBtn.innerText = "Mengirim..."; 
+    uploadWeddingBtn.disabled = true;
+
+    setTimeout(() => {
+        const uniqueId = "photo-" + Date.now();
+        const labelNama = `✨ Oleh: ${namaTamu}`;
+        
+        galleryData.unshift({ 
+            id: uniqueId, 
+            photoUrl: URL.createObjectURL(currentPhotoBlob), 
+            audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
+            label: labelNama, 
+            rawPhotoBlob: currentPhotoBlob 
+        });
+        
+        nameInputModal.classList.add('hidden');
+        boothSection.classList.add('hidden'); 
+        
+        successToast.classList.remove('hidden');
+        setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
+
+        renderGallery(); 
+        resetBooth();
+        
+        document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
+});
+
+function openGalleryModal(id) {
+    const item = galleryData.find(p => p.id === id); if (!item) return;
+    activeSelectedId = id; modalImg.src = item.photoUrl;
+    if (item.audioUrl) { modalAudio.src = item.audioUrl; modalAudio.classList.remove('hidden'); noAudioTxt.classList.add('hidden'); }
+    else { modalAudio.src = ""; modalAudio.classList.add('hidden'); noAudioTxt.classList.remove('hidden'); }
+    galleryModal.classList.remove('hidden');
+}
+closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
+modalDeleteBtn.addEventListener('click', () => { if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { galleryData = galleryData.filter(p => p.id !== activeSelectedId); renderGallery(); galleryModal.classList.add('hidden'); } });
+
+function resetBooth() {
+    audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
+    recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
+    uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
+    guestNameInput.value = "";
+    webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
+    preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    switchCameraBtn.classList.remove('hidden');
+    closeBoothBtn.classList.remove('hidden'); 
+}
+retakeBtn.addEventListener('click', resetBooth);
+
+document.addEventListener('DOMContentLoaded', () => { 
+    renderGallery(); 
+});
