@@ -124,6 +124,7 @@ async function startWebcam() {
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
         
+        // PERBAIKAN 1: Paksa video untuk langsung play demi stabilitas Chrome/Safari mobile
         webcamElement.onloadedmetadata = () => {
             webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
         };
@@ -164,21 +165,24 @@ window.changeFrameStyle = function(style) {
     if (style === 'dark') {
         frameUI.style.borderColor = '#1c1917';
         decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-4 rounded-xl border border-stone-800 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-1.5";
-        weddingDate.className = "text-[9px] text-stone-400 font-semibold tracking-widest mt-1.5 mb-0.5";
+        decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
+        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
     } else if (style === 'classic') {
         frameUI.style.borderColor = '#ffffff';
         decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
-        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-4 rounded-xl border border-stone-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-1.5";
-        weddingDate.className = "text-[9px] text-stone-500 font-semibold tracking-widest mt-1.5 mb-0.5";
+        decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
+        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
     } else if (style === 'romantic') {
         frameUI.style.borderColor = '#ffe4e6';
         decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
-        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-4 rounded-xl border border-rose-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-1.5";
-        weddingDate.className = "text-[9px] text-rose-900/60 font-semibold tracking-widest mt-1.5 mb-0.5";
+        decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
+        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
     }
 };
 
@@ -292,15 +296,14 @@ function captureImage() {
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // Disesuaikan tingginya agar lebih seimbang setelah emot bawah dihapus
-    const boxHeight = canvasElement.height * 0.13;
+    const boxHeight = canvasElement.height * 0.16;
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
     const assetSize = canvasElement.width * 0.26;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + (canvasElement.height * 0.03);
+    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
 
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
@@ -310,9 +313,9 @@ function captureImage() {
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
     let decorSet = {
-        dark: { topL: "✨ ✦", topR: "✦ ✨" },
-        classic: { topL: "🌸 ✦", topR: "✦ 🌸" },
-        romantic: { topL: "❤️ ✦", topR: "✦ ❤️" }
+        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
@@ -322,19 +325,19 @@ function captureImage() {
     ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
     ctx.textAlign = 'right';
     ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'center';
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    // PERBAIKAN: Kode penggambaran emotikon bagian bawah (ctx.fillText(currentDecor.bottom, ...)) TELAH DIHAPUS.
-
+    // PERBAIKAN 2: Menggunakan document.fonts.load untuk menjamin font handwriting terpasang sebelum dicetak
     document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
         ctx.fillStyle = textColors[selectedFrameStyle];
         ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
         ctx.textAlign = 'center';
-        // Koordinat Y disesuaikan sedikit ke bawah agar teks terpusat dengan indah di dalam kotak
-        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 2.3));
+        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
         
         ctx.fillStyle = subTextColors[selectedFrameStyle];
-        ctx.font = `bold ${canvasElement.width * 0.024}px sans-serif`;
-        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.45));
+        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
         canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
     });
