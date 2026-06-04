@@ -123,6 +123,11 @@ async function startWebcam() {
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
+        
+        // PERBAIKAN 1: Paksa video untuk langsung play demi stabilitas Chrome/Safari mobile
+        webcamElement.onloadedmetadata = () => {
+            webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
+        };
     } catch (err) {
         alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
     }
@@ -218,7 +223,6 @@ function triggerFlashAndCapture() {
     }, 400);
 }
 
-// FUNGSI INTI: PEMROSESAN CETAKAN GAMBAR CANVAS DAN PENATAAN TEXT
 function captureImage() {
     const ctx = canvasElement.getContext('2d');
     canvasElement.width = webcamElement.videoWidth || 640;
@@ -231,7 +235,7 @@ function captureImage() {
     ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     
-    // Pemrosesan Soft Light Glow Filter Efek
+    // Filter Efek
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -297,7 +301,6 @@ function captureImage() {
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // 1. Gambar Aset Ilustrasi Pengantin
     const assetSize = canvasElement.width * 0.26;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
     const assetY = boxY - assetSize + (canvasElement.height * 0.04);
@@ -306,11 +309,9 @@ function captureImage() {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // 2. Gambar Kotak Latar Informasi Nama (Menggunakan fillRect standar agar tidak crash di mobile browser)
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
-    // Cetak Aksesoris Dekorasi Teks Ikon
     let decorSet = {
         dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
         classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
@@ -327,19 +328,19 @@ function captureImage() {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    // =============================================================
-    // MODIFIKASI UTAMA: MENYUNTIKKAN FONT HANDWRITING KE CANVAS GAMBAR
-    // =============================================================
-    ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
-    
-    // Cetak Sub-Teks Informasi Tanggal Pernikahan
-    ctx.fillStyle = subTextColors[selectedFrameStyle];
-    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+    // PERBAIKAN 2: Menggunakan document.fonts.load untuk menjamin font handwriting terpasang sebelum dicetak
+    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+        ctx.textAlign = 'center';
+        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+        
+        ctx.fillStyle = subTextColors[selectedFrameStyle];
+        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-    canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+        canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+    });
 
     webcamElement.classList.add('hidden');
     canvasElement.classList.remove('hidden');
