@@ -1,0 +1,272 @@
+// Pengikatan Elemen DOM Utama
+const startBoothBtn = document.getElementById('startBoothBtn');
+const boothSection = document.getElementById('booth-section');
+const webcamElement = document.getElementById('webcam');
+const canvasElement = document.getElementById('photoCanvas');
+const captureBtn = document.getElementById('captureBtn');
+const afterCaptureBtn = document.getElementById('afterCaptureBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const shareBtn = document.getElementById('shareBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
+const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
+
+const recordBtn = document.getElementById('recordBtn');
+const recordStatus = document.getElementById('recordStatus');
+const audioPlayback = document.getElementById('audioPlayback');
+let mediaRecorder;
+let audioChunks = [];
+let currentAudioBlob = null;
+let currentPhotoBlob = null;
+
+const galleryModal = document.getElementById('galleryModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const modalImg = document.getElementById('modalImg');
+const modalAudio = document.getElementById('modalAudio');
+const modalAudioContainer = document.getElementById('modalAudioContainer');
+const noAudioTxt = document.getElementById('noAudioTxt');
+const modalShareBtn = document.getElementById('modalShareBtn');
+const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+
+const countdownOverlay = document.getElementById('countdownOverlay');
+const countdownText = document.getElementById('countdownText');
+const frameUI = document.getElementById('frameUI');
+const frameCardInner = document.getElementById('frameCardInner');
+const decorTop = document.getElementById('decorTop');
+const decorBottom = document.getElementById('decorBottom');
+const weddingTitle = document.getElementById('weddingTitle');
+const weddingDate = document.getElementById('weddingDate');
+const preCaptureAction = document.getElementById('preCaptureAction');
+const frameSelector = document.getElementById('frameSelector');
+const filterSelector = document.getElementById('filterSelector');
+const timerSelector = document.getElementById('timerSelector');
+const timerOnBtn = document.getElementById('timerOnBtn');
+const timerOffBtn = document.getElementById('timerOffBtn');
+const switchCameraBtn = document.getElementById('switchCameraBtn');
+const closeBoothBtn = document.getElementById('closeBoothBtn');
+
+const openSettingsBtn = document.getElementById('openSettingsBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+
+const triggerUploadModalBtn = document.getElementById('triggerUploadModalBtn');
+const nameInputModal = document.getElementById('nameInputModal');
+const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+const guestNameInput = document.getElementById('guestNameInput');
+
+const flashEffect = document.getElementById('flashEffect');
+const successToast = document.getElementById('successToast');
+
+// State Global Kontrol Aplikasi
+let selectedFrameStyle = 'dark'; 
+let selectedFilter = 'normal';
+let useTimer = true; 
+let currentFacingMode = 'user'; 
+let currentStream = null;
+
+// Memuat Gambar Aset Pengantin Lokal
+let loadedWeddingAsset = new Image();
+loadedWeddingAsset.src = "pengantin.png"; 
+
+// Data Gallery Awal Semula (Dummy)
+let galleryData = [
+    { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
+    { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
+];
+let activeSelectedId = null;
+
+// Event Listeners Dasar Kontrol UI Modals
+openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+triggerUploadModalBtn.addEventListener('click', () => {
+    nameInputModal.classList.remove('hidden');
+    guestNameInput.focus();
+});
+cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
+
+closeBoothBtn.addEventListener('click', () => {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+    settingsModal.classList.add('hidden');
+    boothSection.classList.add('hidden');
+    resetBooth();
+});
+
+switchCameraBtn.addEventListener('click', () => {
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+    if (currentFacingMode === 'user') {
+        webcamElement.classList.add('transform', '-scale-x-100');
+    } else {
+        webcamElement.classList.remove('transform', '-scale-x-100');
+    }
+    startWebcam();
+});
+
+// Tombol Utama Buka Modul Kamera Photobooth
+startBoothBtn.addEventListener('click', () => {
+    boothSection.classList.remove('hidden');
+    startWebcam();
+});
+
+async function startWebcam() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+    try {
+        const constraints = {
+            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+        };
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcamElement.srcObject = currentStream;
+    } catch (err) {
+        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
+    }
+}
+
+window.setTimerOption = function(status) {
+    useTimer = status;
+    if (useTimer) {
+        timerOnBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
+        timerOffBtn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-lg font-medium text-stone-300";
+    } else {
+        timerOnBtn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-lg font-medium text-stone-300";
+        timerOffBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
+    }
+};
+
+window.changeFilter = function(filterType) {
+    selectedFilter = filterType;
+    const buttons = filterSelector.getElementsByTagName('button');
+    for (let btn of buttons) {
+        btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-1.5 rounded-lg font-medium text-stone-300";
+    }
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    webcamElement.className = `w-full h-full object-cover ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
+};
+
+window.changeFrameStyle = function(style) {
+    selectedFrameStyle = style;
+    const buttons = frameSelector.getElementsByTagName('button');
+    for (let btn of buttons) {
+        btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-xl font-medium text-stone-300";
+    }
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
+
+    if (style === 'dark') {
+        frameUI.style.borderColor = '#1c1917';
+        decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
+        decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
+        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
+    } else if (style === 'classic') {
+        frameUI.style.borderColor = '#ffffff';
+        decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
+        decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
+        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
+    } else if (style === 'romantic') {
+        frameUI.style.borderColor = '#ffe4e6';
+        decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
+        decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
+        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
+    }
+};
+
+captureBtn.addEventListener('click', () => {
+    preCaptureAction.classList.add('hidden'); 
+    switchCameraBtn.classList.add('hidden');
+    closeBoothBtn.classList.add('hidden'); 
+    settingsModal.classList.add('hidden');
+    
+    if (useTimer) {
+        countdownOverlay.classList.remove('hidden');
+        let count = 3;
+        countdownText.innerText = count;
+        
+        let timer = setInterval(() => { 
+            count--; 
+            if (count > 0) { 
+                countdownText.innerText = count; 
+            } else { 
+                clearInterval(timer); 
+                countdownOverlay.classList.add('hidden'); 
+                triggerFlashAndCapture(); 
+            } 
+        }, 1000);
+    } else {
+        triggerFlashAndCapture();
+    }
+});
+
+function triggerFlashAndCapture() {
+    flashEffect.classList.remove('hidden');
+    flashEffect.style.opacity = '1';
+    
+    setTimeout(() => {
+        flashEffect.style.opacity = '0';
+        setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
+        captureImage();
+    }, 400);
+}
+
+// FUNGSI INTI: PEMROSESAN CETAKAN GAMBAR CANVAS DAN PENATAAN LAYOUT TEKS
+function captureImage() {
+    const ctx = canvasElement.getContext('2d');
+    canvasElement.width = webcamElement.videoWidth || 640;
+    canvasElement.height = webcamElement.videoHeight || 480;
+    
+    if (currentFacingMode === 'user') {
+        ctx.translate(canvasElement.width, 0);
+        ctx.scale(-1, 1);
+    }
+    ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    
+    // Pemrosesan Soft Light Glow Filter Efek
+    if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
+        const blurCanvas = document.createElement('canvas');
+        blurCanvas.width = canvasElement.width;
+        blurCanvas.height = canvasElement.height;
+        const blurCtx = blurCanvas.getContext('2d');
+        blurCtx.drawImage(canvasElement, 0, 0);
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'soft-light'; 
+        ctx.globalAlpha = 0.25; 
+        ctx.filter = 'blur(2px)'; 
+        ctx.drawImage(blurCanvas, 0, 0);
+        ctx.restore();
+    }
+
+    const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+    const data = imgData.data;
+    
+    if (selectedFilter === 'glowing') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15 + 10);
+            data[i+1] = Math.min(255, data[i+1] * 1.12 + 10);
+            data[i+2] = Math.min(255, data[i+2] * 1.08 + 5);
+        }
+    } else if (selectedFilter === 'flawless') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, r * 1.18 + 12);
+            data[i+1] = Math.min(255, g * 1.08 + 5);
+            data[i+2] = Math.min(255, b * 1.12 + 8);
+        }
+    } else if (selectedFilter === 'warm') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.9;
+        }
+    } else if (selectedFilter === 'bw') {
+        for (let i = 0; i < data.length; i += 4) {
+            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data
