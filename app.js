@@ -64,7 +64,7 @@ let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
-let uploadedImageElement = null; // Menyimpan objek gambar dari file galeri
+let uploadedImageElement = null; 
 
 // Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
@@ -126,18 +126,15 @@ triggerGalleryBtn.addEventListener('click', () => {
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        stopWebcamStream(); // Matikan stream kamera demi menghemat memori
+        stopWebcamStream(); 
         const reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
-                // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
-                
-                // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
                 captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
@@ -150,7 +147,7 @@ async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
-    uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
+    uploadedImageElement = null; 
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -253,20 +250,25 @@ function triggerFlashAndCapture() {
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage(false); // Mode normal via stream kamera
+        captureImage(false); 
     }, 400);
 }
 
+// ==========================================================
+// FUNGSI UTAMA YANG DIPERBAIKI SECARA SINKRONUS (ANTI-LIVE)
+// ==========================================================
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // PERBAIKAN: Sembunyikan video live streaming seketika tombol rana dipicu
     if (!isUploadedMode) {
+        // SOLUSI JITU 1: Bekukan frame video langsung di tempat (Freeze state)
+        webcamElement.pause();
+        
+        // Langsung tukar visibilitas elemen UI agar video tertutup canvas statis
         webcamElement.classList.add('hidden');
         canvasElement.classList.remove('hidden');
     }
     
-    // Menentukan dimensi berdasarkan input gambar
     if (isUploadedMode && uploadedImageElement) {
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
@@ -286,21 +288,20 @@ function captureImage(isUploadedMode = false) {
         canvasElement.height = targetHeight;
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
-        // Ambil frame statis dari video saat ini
+        // Ambil dimensi asli video streams
         canvasElement.width = webcamElement.videoWidth || 640;
         canvasElement.height = webcamElement.videoHeight || 480;
+        
         if (currentFacingMode === 'user') {
             ctx.translate(canvasElement.width, 0);
             ctx.scale(-1, 1);
         }
+        // Salin snapshot video ke dalam konteks canvas 2D
         ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        
-        // PERBAIKAN: Matikan stream kamera agar gambar membeku total
-        stopWebcamStream();
     }
     
-    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
+    // Pemrosesan Filter Efek Piksel
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -351,11 +352,10 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Lanjutkan proses penggambaran aset pelengkap frame
-    drawCanvasFrame(ctx);
+    drawCanvasFrame(ctx, isUploadedMode);
 }
 
-function drawCanvasFrame(ctx) {
+function drawCanvasFrame(ctx, isUploadedMode = false) {
     let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
@@ -398,7 +398,6 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    // Menunggu pemuatan font custom tulisan pengantin selesai
     document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
         ctx.fillStyle = textColors[selectedFrameStyle];
         ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
@@ -409,12 +408,15 @@ function drawCanvasFrame(ctx) {
         ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
         ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-        // Melakukan konversi Blob hanya ketika seluruh font selesai digambar
         canvasElement.toBlob((blob) => { 
             currentPhotoBlob = blob; 
-            
-            // Tampilkan tombol aksi simpan/unggah sesudah gambar siap
             afterCaptureBtn.classList.remove('hidden');
+            
+            // SOLUSI JITU 2: Kamera hardware baru dimatikan total di sini, aman dari resiko blank hitam
+            if (!isUploadedMode) {
+                stopWebcamStream();
+            }
+            
             initAudioRecorder();
         }, 'image/png');
     });
@@ -535,7 +537,7 @@ function resetBooth() {
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
-    galleryInput.value = ""; // Bersihkan berkas terunggah lama
+    galleryInput.value = ""; 
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
@@ -545,7 +547,7 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
+    startWebcam(); 
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
