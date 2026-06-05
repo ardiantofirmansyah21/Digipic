@@ -121,12 +121,12 @@ startBoothBtn.addEventListener('click', () => {
     startWebcam();
 });
 
-// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
+// Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
-// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
+// Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -264,9 +264,7 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
     if (isUploadedMode && uploadedImageElement) {
-        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
@@ -295,7 +293,6 @@ function captureImage(isUploadedMode = false) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     
-    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -512,7 +509,7 @@ function resetBooth() {
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
-    galleryInput.value = ""; // Bersihkan berkas terunggah lama
+    galleryInput.value = ""; 
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
@@ -522,7 +519,7 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
+    startWebcam(); 
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
