@@ -519,16 +519,73 @@ uploadWeddingBtn.addEventListener('click', () => {
     }, 1000);
 });
 
+// ... [Kode bagian atas app.js tetap sama] ...
+
 function openGalleryModal(id) {
-    const item = galleryData.find(p => p.id === id); if (!item) return;
-    activeSelectedId = id; modalImg.src = item.photoUrl;
-    if (item.audioUrl) { modalAudio.src = item.audioUrl; modalAudio.classList.remove('hidden'); noAudioTxt.classList.add('hidden'); }
-    else { modalAudio.src = ""; modalAudio.classList.add('hidden'); noAudioTxt.classList.remove('hidden'); }
+    const item = galleryData.find(p => p.id === id); 
+    if (!item) return;
+    
+    activeSelectedId = id; 
+    modalImg.src = item.photoUrl;
+    
+    if (item.audioUrl) { 
+        modalAudio.src = item.audioUrl; 
+        modalAudio.classList.remove('hidden'); 
+        noAudioTxt.classList.add('hidden'); 
+    } else { 
+        modalAudio.src = ""; 
+        modalAudio.classList.add('hidden'); 
+        noAudioTxt.classList.remove('hidden'); 
+    }
+    
     galleryModal.classList.remove('hidden');
 }
-closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
-modalDeleteBtn.addEventListener('click', () => { if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { galleryData = galleryData.filter(p => p.id !== activeSelectedId); renderGallery(); galleryModal.classList.add('hidden'); } });
 
+// Tambahkan Event Listener untuk Tombol Bagikan di dalam Modal Galeri ini:
+modalShareBtn.addEventListener('click', async () => {
+    const item = galleryData.find(p => p.id === activeSelectedId);
+    if (!item) return;
+
+    try {
+        // 1. Jika foto baru diambil (punya rawPhotoBlob), langsung bagikan file aslinya
+        if (item.rawPhotoBlob) {
+            triggerShare(item.rawPhotoBlob);
+        } 
+        // 2. Jika foto bawaan / dummy (berupa URL web internet), kita download dulu ke blob lalu bagikan
+        else if (item.photoUrl.startsWith('http')) {
+            modalShareBtn.innerText = "Memuat...";
+            const response = await fetch(item.photoUrl);
+            const blob = await response.blob();
+            modalShareBtn.innerText = "Bagikan";
+            
+            const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Galeri Kebahagiaan Sabrina & Raka',
+                    text: item.label
+                });
+            } else {
+                alert("Fitur bagikan file tidak didukung di browser ini. Silakan unduh foto terlebih dahulu.");
+            }
+        }
+    } catch (err) {
+        console.error("Gagal membagikan:", err);
+        modalShareBtn.innerText = "Bagikan";
+    }
+});
+
+closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
+
+modalDeleteBtn.addEventListener('click', () => { 
+    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
+        galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
+        renderGallery(); 
+        galleryModal.classList.add('hidden'); 
+    } 
+});
+
+// ... [Sisa kode fungsi resetBooth dan lainnya ke bawah tetap sama] ...
 function resetBooth() {
     audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
