@@ -1,3 +1,10 @@
+// ==========================================
+// KONFIGURASI DATABASE SUPABASE REAL-TIME
+// ==========================================
+const SUPABASE_URL = "https://fehdsbsdjcyifefsqnzm.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ugGoNz1zo28WdTvb7iI64Q_9lw5-dd1";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
@@ -74,10 +81,8 @@ let uploadedImageElement = null;
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
 
-let galleryData = [
-    { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
-    { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
-];
+// Data penampung lokal yang nanti sinkron dengan database
+let galleryData = [];
 let activeSelectedId = null;
 
 openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
@@ -149,7 +154,6 @@ async function startWebcam() {
     }
     uploadedImageElement = null;
     try {
-        // Mengatur rasio penangkapan kamera ideal potret vertikal
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1024 }, height: { ideal: 768 } },
             audio: false
@@ -269,7 +273,6 @@ function captureImage(isUploadedMode = false) {
         }
         ctx.drawImage(uploadedImageElement, drawX, drawY, drawWidth, drawHeight);
     } else {
-        // Pemotongan Presisi Mengikuti Sumbu Tengah Video Object Contain
         ctx.save();
         if (currentFacingMode === 'user') {
             ctx.translate(canvasElement.width, 0);
@@ -298,7 +301,6 @@ function captureImage(isUploadedMode = false) {
         ctx.restore();
     }
     
-    // Pemrosesan Efek Filter Piksel Warna
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -347,12 +349,10 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Konfigurasi Palet Warna & Transparansi Pengantin Baru (Bug 2 Selesai)
     let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#d6d3d1', classic: '#57534e', romantic: '#9f1239' };
     
-    // Menggunakan Nilai Transparansi Alfa Aman Kustom 0.65 (65% Opacity) Agar Wajah/Dagu Tidak Terblokir
     let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.65)', classic: 'rgba(255, 255, 255, 0.65)', romantic: 'rgba(255, 241, 242, 0.65)' };
     let innerBorderColors = { dark: 'rgba(255,255,255,0.1)', classic: 'rgba(0,0,0,0.08)', romantic: 'rgba(255,255,255,0.2)' };
 
@@ -361,7 +361,6 @@ function captureImage(isUploadedMode = false) {
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // Tinggi Kotak Teks Informasi Diturunkan Menjadi Hanya 11% (Menyelamatkan Area Mulut Tamu)
     const boxHeight = canvasElement.height * 0.11;
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.02);
     const boxX = borderWidth + (canvasElement.width * 0.04);
@@ -398,7 +397,6 @@ function captureImage(isUploadedMode = false) {
         ctx.fillStyle = textColors[selectedFrameStyle];
         ctx.font = `italic ${canvasElement.width * 0.045}px 'Great Vibes', cursive`; 
         ctx.textAlign = 'left';
-        // Penggeseran Teks Vertikal Agar Lebih Center Sempurna
         ctx.fillText("Sabrina & Raka", contentStartX, boxY + (boxHeight / 2.1));
         
         ctx.fillStyle = subTextColors[selectedFrameStyle];
@@ -469,8 +467,7 @@ shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
 downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
 modalDownloadBtn.addEventListener('click', () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
-    if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
-    else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+    if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
 });
 
 function renderGallery() {
@@ -484,7 +481,32 @@ function renderGallery() {
     });
 }
 
-uploadWeddingBtn.addEventListener('click', () => {
+// AMBIL DATA DARI DATABASE SUPABASE
+async function fetchGalleryFromSupabase() {
+    try {
+        const { data, error } = await supabase
+            .from('wedding_booth')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+            galleryData = data.map(item => ({
+                id: item.id,
+                photoUrl: item.photo_url,
+                audioUrl: item.audio_url,
+                label: item.label
+            }));
+            renderGallery();
+        }
+    } catch (err) {
+        console.error("Gagal mengambil data dari Supabase:", err.message);
+    }
+}
+
+// KIRIM DATA KE DATABASE SUPABASE (STORAGE & TABLE)
+uploadWeddingBtn.addEventListener('click', async () => {
     const namaTamu = guestNameInput.value.trim();
     if (namaTamu === "") {
         alert("Nama tidak boleh kosong!");
@@ -495,31 +517,70 @@ uploadWeddingBtn.addEventListener('click', () => {
     uploadWeddingBtn.innerText = "Mengirim..."; 
     uploadWeddingBtn.disabled = true;
 
-    setTimeout(() => {
+    try {
         const uniqueId = "photo-" + Date.now();
+        let finalPhotoUrl = "";
+        let finalAudioUrl = null;
+
+        // 1. Upload Foto Ke Supabase Storage Bucket
+        if (currentPhotoBlob) {
+            const photoFileName = `${uniqueId}.png`;
+            const { data: photoUpload, error: photoError } = await supabase.storage
+                .from('wedding-assets')
+                .upload(`photos/${photoFileName}`, currentPhotoBlob, { contentType: 'image/png' });
+
+            if (photoError) throw photoError;
+
+            const { data: publicPhotoData } = supabase.storage
+                .from('wedding-assets')
+                .getPublicUrl(`photos/${photoFileName}`);
+                
+            finalPhotoUrl = publicPhotoData.publicUrl;
+        }
+
+        // 2. Upload Audio Ke Supabase Storage Bucket (Jika ada)
+        if (currentAudioBlob) {
+            const audioFileName = `${uniqueId}.mp3`;
+            const { data: audioUpload, error: audioError } = await supabase.storage
+                .from('wedding-assets')
+                .upload(`audios/${audioFileName}`, currentAudioBlob, { contentType: 'audio/mp3' });
+
+            if (audioError) throw audioError;
+
+            const { data: publicAudioData } = supabase.storage
+                .from('wedding-assets')
+                .getPublicUrl(`audios/${audioFileName}`);
+                
+            finalAudioUrl = publicAudioData.publicUrl;
+        }
+
+        // 3. Masukkan Informasi Teks ke Supabase Table
         const labelNama = `✨ Oleh: ${namaTamu}`;
-        
-        galleryData.unshift({ 
-            id: uniqueId, 
-            photoUrl: URL.createObjectURL(currentPhotoBlob), 
-            audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
-            label: labelNama, 
-            rawPhotoBlob: currentPhotoBlob 
-        });
-        
+        const { error: insertError } = await supabase
+            .from('wedding_booth')
+            .insert([
+                { id: uniqueId, label: labelNama, photo_url: finalPhotoUrl, audio_url: finalAudioUrl }
+            ]);
+
+        if (insertError) throw insertError;
+
         nameInputModal.classList.add('hidden');
         boothSection.classList.add('hidden'); 
         
         successToast.classList.remove('hidden');
         setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
 
-        renderGallery(); 
+        await fetchGalleryFromSupabase(); 
         resetBooth();
         document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
-    }, 1000);
-});
 
-// ... [Kode bagian atas app.js tetap sama] ...
+    } catch (err) {
+        alert("Gagal mengunggah kenangan: " + err.message);
+    } finally {
+        uploadWeddingBtn.innerText = "Kirim 🚀"; 
+        uploadWeddingBtn.disabled = false;
+    }
+});
 
 function openGalleryModal(id) {
     const item = galleryData.find(p => p.id === id); 
@@ -541,18 +602,12 @@ function openGalleryModal(id) {
     galleryModal.classList.remove('hidden');
 }
 
-// Tambahkan Event Listener untuk Tombol Bagikan di dalam Modal Galeri ini:
 modalShareBtn.addEventListener('click', async () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
     if (!item) return;
 
     try {
-        // 1. Jika foto baru diambil (punya rawPhotoBlob), langsung bagikan file aslinya
-        if (item.rawPhotoBlob) {
-            triggerShare(item.rawPhotoBlob);
-        } 
-        // 2. Jika foto bawaan / dummy (berupa URL web internet), kita download dulu ke blob lalu bagikan
-        else if (item.photoUrl.startsWith('http')) {
+        if (item.photoUrl.startsWith('http')) {
             modalShareBtn.innerText = "Memuat...";
             const response = await fetch(item.photoUrl);
             const blob = await response.blob();
@@ -577,15 +632,28 @@ modalShareBtn.addEventListener('click', async () => {
 
 closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
 
-modalDeleteBtn.addEventListener('click', () => { 
-    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
-        galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
-        renderGallery(); 
-        galleryModal.classList.add('hidden'); 
+modalDeleteBtn.addEventListener('click', async () => { 
+    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini secara permanen dari database?")) { 
+        try {
+            const item = galleryData.find(p => p.id === activeSelectedId);
+            if (!item) return;
+
+            // Hapus record dari table
+            const { error } = await supabase
+                .from('wedding_booth')
+                .delete()
+                .eq('id', activeSelectedId);
+
+            if (error) throw error;
+
+            await fetchGalleryFromSupabase(); 
+            galleryModal.classList.add('hidden'); 
+        } catch (err) {
+            alert("Gagal menghapus: " + err.message);
+        }
     } 
 });
 
-// ... [Sisa kode fungsi resetBooth dan lainnya ke bawah tetap sama] ...
 function resetBooth() {
     audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
@@ -607,5 +675,5 @@ retakeBtn.addEventListener('click', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
-    renderGallery(); 
+    fetchGalleryFromSupabase(); 
 });
