@@ -58,12 +58,17 @@ const guestNameInput = document.getElementById('guestNameInput');
 const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 
+// FITUR UPLOAD BARU: DOM Elemen Unggah Galeri
+const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
+const galleryInput = document.getElementById('galleryInput');
+
 // State Global Kontrol Aplikasi
 let selectedFrameStyle = 'dark'; 
 let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
+let uploadedImageElement = null; // Menyimpan temporary data gambar dari galeri perangkat
 
 // Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
@@ -87,14 +92,18 @@ triggerUploadModalBtn.addEventListener('click', () => {
 cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
 
 closeBoothBtn.addEventListener('click', () => {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
-    }
+    stopWebcamStream();
     settingsModal.classList.add('hidden');
     boothSection.classList.add('hidden');
     resetBooth();
 });
+
+function stopWebcamStream() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+}
 
 switchCameraBtn.addEventListener('click', () => {
     currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
@@ -112,10 +121,37 @@ startBoothBtn.addEventListener('click', () => {
     startWebcam();
 });
 
+// FITUR UPLOAD BARU: Handler integrasi pemilihan gambar dari file galeri lokal ponsel
+triggerGalleryBtn.addEventListener('click', () => {
+    galleryInput.click();
+});
+
+galleryInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        stopWebcamStream(); // Matikan kamera streaming agar hemat daya baterai
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            uploadedImageElement = new Image();
+            uploadedImageElement.onload = function() {
+                // Sembunyikan tombol live stream camera kontrol, langsung render canvas frame
+                preCaptureAction.classList.add('hidden'); 
+                switchCameraBtn.classList.add('hidden');
+                closeBoothBtn.classList.add('hidden'); 
+                settingsModal.classList.add('hidden');
+                captureImage(true); // Kirim parameter true (Mode Upload)
+            };
+            uploadedImageElement.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
 async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
+    uploadedImageElement = null; // Reset status file gambar terupload
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -124,7 +160,6 @@ async function startWebcam() {
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
         
-        // PERBAIKAN 1: Paksa video untuk langsung play demi stabilitas Chrome/Safari mobile
         webcamElement.onloadedmetadata = () => {
             webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
         };
@@ -219,23 +254,30 @@ function triggerFlashAndCapture() {
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage();
+        captureImage(false); // Mode Kamera Live
     }, 400);
 }
 
-function captureImage() {
+function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
-    canvasElement.width = webcamElement.videoWidth || 640;
-    canvasElement.height = webcamElement.videoHeight || 480;
     
-    if (currentFacingMode === 'user') {
-        ctx.translate(canvasElement.width, 0);
-        ctx.scale(-1, 1);
+    // Konfigurasi Aspek Rasio Canvas bersandar pada input gambar sumber
+    if (isUploadedMode && uploadedImageElement) {
+        canvasElement.width = uploadedImageElement.width || 640;
+        canvasElement.height = uploadedImageElement.height || 480;
+        ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
+    } else {
+        canvasElement.width = webcamElement.videoWidth || 640;
+        canvasElement.height = webcamElement.videoHeight || 480;
+        if (currentFacingMode === 'user') {
+            ctx.translate(canvasElement.width, 0);
+            ctx.scale(-1, 1);
+        }
+        ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
-    ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
     
-    // Filter Efek
+    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -328,7 +370,6 @@ function captureImage() {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    // PERBAIKAN 2: Menggunakan document.fonts.load untuk menjamin font handwriting terpasang sebelum dicetak
     document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
         ctx.fillStyle = textColors[selectedFrameStyle];
         ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
@@ -453,12 +494,17 @@ function resetBooth() {
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
+    galleryInput.value = ""; // Clear file uploaded
+    uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
     switchCameraBtn.classList.remove('hidden');
     closeBoothBtn.classList.remove('hidden'); 
 }
-retakeBtn.addEventListener('click', resetBooth);
+retakeBtn.addEventListener('click', () => {
+    resetBooth();
+    startWebcam(); // Hidupkan ulang webcam saat retake ditekan
+});
 
 document.addEventListener('DOMContentLoaded', () => { 
     renderGallery(); 
