@@ -2,7 +2,7 @@
 const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
 const webcamElement = document.getElementById('webcam');
-const canvasElement = document.getElementById('photoCanvas'); // Ini akan disembunyikan
+const canvasElement = document.getElementById('photoCanvas'); 
 const captureBtn = document.getElementById('captureBtn');
 const afterCaptureBtn = document.getElementById('afterCaptureBtn');
 const retakeBtn = document.getElementById('retakeBtn');
@@ -78,29 +78,29 @@ let galleryData = [
 let activeSelectedId = null;
 
 // =========================================================================
-// SETUP FIX KENDALA 1: ELEMEN IMAGE PREVIEW & LIGHTBOX UTK FULLSCREEN
+// SETUP PERBAIKAN ELEMEN VISUAL PREVIEW & LIGHTBOX (ANTI TERBELAH & MELUBER)
 // =========================================================================
 let photoPreviewContainer = document.getElementById('photoPreviewContainer');
 let previewImage = document.getElementById('previewImage');
 
 if (!photoPreviewContainer) {
-    // Membuat container khusus gambar pratinjau agar aman dari bug layout meluber di HP
     photoPreviewContainer = document.createElement('div');
     photoPreviewContainer.id = 'photoPreviewContainer';
-    photoPreviewContainer.className = 'w-full hidden flex justify-center items-center px-4 my-2';
+    // Menambahkan kelas tata letak flex terpusat dengan padding bottom aman agar terangkat ke atas tombol
+    photoPreviewContainer.className = 'w-full hidden flex flex-col justify-center items-center px-4 pb-4 mt-1';
     photoPreviewContainer.innerHTML = `
-        <div class="relative w-full max-w-[340px] flex flex-col items-center">
-            <img id="previewImage" class="w-auto max-w-full max-h-[48vh] rounded-xl shadow-xl border-4 border-stone-800/40 object-contain active:scale-[0.99] transition-all" src="" alt="Pratinjau Foto">
-            <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-[9px] text-stone-300 px-2 py-0.5 rounded-md pointer-events-none font-medium">🔍 Sentuh foto untuk Fullscreen</div>
+        <div class="relative w-full max-w-[290px] mx-auto flex flex-col items-center">
+            <img id="previewImage" class="w-auto max-w-full max-h-[40vh] rounded-xl shadow-xl border-2 border-stone-700 object-contain active:scale-[0.98] transition-all" src="" alt="Pratinjau Foto">
+            <div class="mt-1.5 text-[9px] text-stone-400 font-medium bg-stone-900/40 px-2 py-0.5 rounded-full">🔍 Sentuh foto untuk Fullscreen</div>
         </div>
     `;
-    // Sisipkan container tepat di atas panel tombol kontrol audio
+    // Sisipkan container tepat di atas panel tombol aksi pasca jepret
     const parentContainer = canvasElement.parentNode;
     parentContainer.insertBefore(photoPreviewContainer, canvasElement);
     previewImage = document.getElementById('previewImage');
 }
 
-// Sembunyikan canvas asli agar berjalan di background saja (anti-meluber)
+// Pastikan canvas bawaan tersembunyi sepenuhnya secara konstan
 canvasElement.style.setProperty('display', 'none', 'important');
 canvasElement.classList.add('hidden');
 
@@ -113,11 +113,11 @@ if (!previewLightbox) {
     previewLightbox.id = 'previewLightbox';
     previewLightbox.className = 'fixed inset-0 bg-black/95 z-[100] hidden flex flex-col items-center justify-center p-4';
     previewLightbox.innerHTML = `
-        <button id="lightboxCloseBtn" class="absolute top-4 right-4 bg-white/20 text-white rounded-full w-11 h-11 flex items-center justify-center text-2xl font-bold backdrop-blur-sm active:scale-95 transition-all">&times;</button>
-        <div class="max-w-full max-h-[82vh] flex items-center justify-center">
-            <img id="lightboxImg" class="max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl border border-stone-800" src="" alt="Full Preview">
+        <button id="lightboxCloseBtn" class="absolute top-4 right-4 bg-white/20 text-white rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold backdrop-blur-sm active:scale-95 transition-all">&times;</button>
+        <div class="max-w-full max-h-[80vh] flex items-center justify-center">
+            <img id="lightboxImg" class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-stone-800" src="" alt="Full Preview">
         </div>
-        <p class="text-[10px] text-stone-400 mt-4 font-medium tracking-wide">Klik tombol X atau area luar untuk kembali</p>
+        <p class="text-[10px] text-stone-400 mt-3 font-medium tracking-wide">Klik X atau area luar untuk menutup</p>
     `;
     document.body.appendChild(previewLightbox);
     
@@ -130,10 +130,10 @@ if (!previewLightbox) {
     });
 }
 
-// Daftarkan aksi klik pada preview gambar agar bisa fullscreen mendetail
+// Handler aksi sentuh gambar pratinjau untuk memicu jendela pop-up layar penuh
 previewImage.style.cursor = 'pointer';
 previewImage.addEventListener('click', () => {
-    if (previewImage.src) {
+    if (previewImage.src && !previewImage.src.endsWith('/')) {
         lightboxImg.src = previewImage.src;
         previewLightbox.classList.remove('hidden');
     }
@@ -173,18 +173,16 @@ switchCameraBtn.addEventListener('click', () => {
     startWebcam();
 });
 
-// Tombol Utama Buka Modul Kamera Photobooth
 startBoothBtn.addEventListener('click', () => {
     boothSection.classList.remove('hidden');
+    resetBooth();
     startWebcam();
 });
 
-// Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
-// Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -213,6 +211,9 @@ async function startWebcam() {
         currentStream.getTracks().forEach(track => track.stop());
     }
     uploadedImageElement = null; 
+    webcamElement.style.setProperty('display', 'block', 'important');
+    webcamElement.classList.remove('hidden');
+    
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -321,6 +322,9 @@ function triggerFlashAndCapture() {
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
+    
+    // MATIKAN & SEMBUNYIKAN WEBCAM TOTAL (SOLUSI BUG TAMPILAN TERBELAH SISI)
+    webcamElement.style.setProperty('display', 'none', 'important');
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
@@ -431,29 +435,30 @@ function drawCanvasFrame(ctx) {
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
     let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
 
-    // Kalkulasi ukuran border luar polaroid
+    // Ketebalan bingkai luar polaroid (4% lebar)
     const borderWidth = canvasElement.width * 0.04;
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // Ukuran Kotak Background Teks Nama
-    const boxHeight = canvasElement.height * 0.14; 
+    // Tinggi Kotak Nama (diperkecil rasionya sedikit agar stabil tinggi vertikalnya)
+    const boxHeight = canvasElement.height * 0.13; 
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.03);
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // FIX KENDALA 2: Kunci posisi stiker secara absolut di atas boxY tanpa pengali persentase tinggi canvas dinamis!
-    const assetSize = canvasElement.width * 0.22;
+    // FIX KENDALA 2: Pisahkan emoji sepenuhnya dari wilayah teks nama
+    // Kita dorong assetY naik lebih tinggi menggunakan pengali borderWidth statis
+    const assetSize = canvasElement.width * 0.21;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + (borderWidth * 0.3); // Menggunakan ketebalan border konstan sebagai kompensasi padding
+    const assetY = boxY - assetSize + (borderWidth * 0.1); 
 
-    // Render Stiker Karakter Pengantin
+    // Render Gambar Maskot Pernikahan
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // Render Box Belakang Label
+    // Render Kotak Label Belakang Teks
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
@@ -464,35 +469,36 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Ornamen Teks Sudut Box
+    // Menggambar Ornamen Sudut Teks
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.032}px Arial`;
     ctx.textAlign = 'left';
-    ctx.fillText(currentDecor.topL, boxX + 12, boxY + (canvasElement.height * 0.03));
+    ctx.fillText(currentDecor.topL, boxX + 12, boxY + (canvasElement.height * 0.028));
     ctx.textAlign = 'right';
-    ctx.fillText(currentDecor.topR, boxX + boxWidth - 12, boxY + (canvasElement.height * 0.03));
+    ctx.fillText(currentDecor.topR, boxX + boxWidth - 12, boxY + (canvasElement.height * 0.028));
     ctx.textAlign = 'center';
-    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.015));
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
 
-    // Cetak Nama Pengantin Utama - Posisi Y disesuaikan proporsional dengan boxY & boxHeight
+    // KOREKSI KALIMAT NAMA: Diturunkan posisinya (pembagi diubah ke 1.65) agar menjauh dari emoji pengantin di atasnya
     ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.075}px 'Great Vibes', cursive`; 
+    ctx.font = `italic ${canvasElement.width * 0.072}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.85));
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.65));
     
-    // Cetak Tanggal Sub-caption
+    // Render Baris Tanggal/Subcaption bawah
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.022}px sans-serif`;
-    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.22));
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.16));
 
-    // Jeda konversi data biner & transfer hasil canvas langsung ke elemen <img> HTML
+    // Eksekusi Render ke Gambar Pratinjau HTML
     setTimeout(() => {
-        // Konversi base64 untuk konsumsi visual cepat gambar <img> tag HTML (FIX KENDALA 1)
         const dataUrl = canvasElement.toDataURL('image/png');
         previewImage.src = dataUrl;
-        photoPreviewContainer.classList.remove('hidden'); // Menampilkan elemen preview gambar patuh CSS
+        
+        // Aktifkan container preview gambar (Aman terkendali & patuh tinggi CSS)
+        photoPreviewContainer.classList.remove('hidden'); 
+        photoPreviewContainer.style.setProperty('display', 'flex', 'important');
 
-        // Tetap bentuk Blob biner di belakang layar demi fungsionalitas kirim & download berkas
         canvasElement.toBlob((blob) => { 
             currentPhotoBlob = blob; 
             afterCaptureBtn.classList.remove('hidden');
@@ -513,7 +519,7 @@ async function initAudioRecorder() {
             audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Pemberian izin akses mikrofon ditolak oleh pengguna.");
+        console.log("Akses mikrofon dinonaktifkan oleh pengguna.");
     }
 }
 
@@ -611,20 +617,33 @@ modalDeleteBtn.addEventListener('click', () => {
     } 
 });
 
+// FIX BUG 3: RESET TOTAL ELEMENT AGAR TIDAK TERBELAH / DOUBLE PREVIEW
 function resetBooth() {
-    audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
-    recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
-    uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
+    audioPlayback.classList.add('hidden'); 
+    audioPlayback.src = ""; 
+    currentAudioBlob = null;
+    recordStatus.innerText = "Belum merekam"; 
+    recordBtn.innerText = "Mulai Rekam";
+    uploadWeddingBtn.innerText = "Kirim 🚀"; 
+    uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
     galleryInput.value = ""; 
     uploadedImageElement = null;
     
-    // Reset kondisi element preview gambar HTML
+    // Matikan & hilangkan total gambar pratinjau sisa sebelumnya
     if (previewImage) previewImage.src = "";
-    if (photoPreviewContainer) photoPreviewContainer.classList.add('hidden');
+    if (photoPreviewContainer) {
+        photoPreviewContainer.classList.add('hidden');
+        photoPreviewContainer.style.setProperty('display', 'none', 'important');
+    }
 
-    webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
-    preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    // Tampilkan kembali live video webcam
+    webcamElement.classList.remove('hidden'); 
+    webcamElement.style.setProperty('display', 'block', 'important');
+    
+    canvasElement.classList.add('hidden');
+    preCaptureAction.classList.remove('hidden'); 
+    afterCaptureBtn.classList.add('hidden');
     switchCameraBtn.classList.remove('hidden');
     closeBoothBtn.classList.remove('hidden'); 
 }
