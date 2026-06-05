@@ -58,7 +58,7 @@ const guestNameInput = document.getElementById('guestNameInput');
 const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 
-// FITUR UPLOAD BARU: DOM Elemen Unggah Galeri
+// DOM Elemen Unggah Galeri
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
@@ -68,7 +68,7 @@ let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
-let uploadedImageElement = null; // Menyimpan temporary data gambar dari galeri perangkat
+let uploadedImageElement = null; // Menyimpan objek gambar dari file galeri
 
 // Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
@@ -81,7 +81,7 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
-// Event Listeners Dasar Kontrol UI Modals
+// Event Listeners Kontrol UI Modals
 openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
@@ -121,25 +121,28 @@ startBoothBtn.addEventListener('click', () => {
     startWebcam();
 });
 
-// FITUR UPLOAD BARU: Handler integrasi pemilihan gambar dari file galeri lokal ponsel
+// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
+// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        stopWebcamStream(); // Matikan kamera streaming agar hemat daya baterai
+        stopWebcamStream(); // Matikan stream kamera demi menghemat memori
         const reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
-                // Sembunyikan tombol live stream camera kontrol, langsung render canvas frame
+                // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
-                captureImage(true); // Kirim parameter true (Mode Upload)
+                
+                // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
+                captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
         };
@@ -151,7 +154,7 @@ async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
-    uploadedImageElement = null; // Reset status file gambar terupload
+    uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -254,17 +257,32 @@ function triggerFlashAndCapture() {
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage(false); // Mode Kamera Live
+        captureImage(false); // Mode normal via stream kamera
     }, 400);
 }
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // Konfigurasi Aspek Rasio Canvas bersandar pada input gambar sumber
+    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
     if (isUploadedMode && uploadedImageElement) {
-        canvasElement.width = uploadedImageElement.width || 640;
-        canvasElement.height = uploadedImageElement.height || 480;
+        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
+        const maxDimension = 1280;
+        let targetWidth = uploadedImageElement.width;
+        let targetHeight = uploadedImageElement.height;
+        
+        if (targetWidth > maxDimension || targetHeight > maxDimension) {
+            if (targetWidth > targetHeight) {
+                targetHeight = (maxDimension / targetWidth) * targetHeight;
+                targetWidth = maxDimension;
+            } else {
+                targetWidth = (maxDimension / targetHeight) * targetWidth;
+                targetHeight = maxDimension;
+            }
+        }
+        
+        canvasElement.width = targetWidth;
+        canvasElement.height = targetHeight;
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
         canvasElement.width = webcamElement.videoWidth || 640;
@@ -494,16 +512,17 @@ function resetBooth() {
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
-    galleryInput.value = ""; // Clear file uploaded
+    galleryInput.value = ""; // Bersihkan berkas terunggah lama
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
     switchCameraBtn.classList.remove('hidden');
     closeBoothBtn.classList.remove('hidden'); 
 }
+
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    startWebcam(); // Hidupkan ulang webcam saat retake ditekan
+    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
