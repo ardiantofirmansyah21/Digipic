@@ -41,7 +41,7 @@
             
             <div class="relative w-full aspect-[3/4] max-w-[340px] mx-auto bg-stone-900 rounded-2xl overflow-hidden shadow-2xl border border-stone-800/80">
                 
-                <div id="webcam-container" class="absolute inset-0 w-full h-full z-10 block">
+                <div id="webcam-container" class="absolute inset-0 w-full h-full z-10 block overflow-hidden">
                     <video id="webcam" class="w-full h-full object-cover transform -scale-x-100 filter-normal" autoplay playsinline></video>
                     
                     <div id="frameUI" class="absolute inset-0 border-[14px] border-stone-950 pointer-events-none flex flex-col justify-between p-3 transition-all duration-300">
@@ -59,9 +59,9 @@
                     </div>
                 </div>
 
-                <div id="photoPreviewContainer" class="absolute inset-0 w-full h-full bg-stone-950 z-20 hidden flex flex-col justify-center items-center p-2">
-                    <img id="previewImage" class="w-full h-full object-contain rounded-lg" src="" alt="Pratinjau Hasil Foto">
-                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-[8px] text-stone-400 font-medium bg-stone-900/95 px-2.5 py-1 rounded-full shadow border border-stone-800 pointer-events-none">
+                <div id="photoPreviewContainer" class="absolute inset-0 w-full h-full bg-stone-950 z-20 hidden flex flex-col justify-center items-center p-0 overflow-hidden">
+                    <img id="previewImage" class="w-full h-full object-cover" src="" alt="Pratinjau Hasil Foto">
+                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-[8px] text-stone-300 font-medium bg-stone-950/90 px-3 py-1 rounded-full shadow-md border border-stone-800 pointer-events-none">
                         🔍 Ketuk foto untuk Fullscreen
                     </div>
                 </div>
@@ -159,8 +159,7 @@
             </button>
             <input type="file" id="galleryInput" accept="image/*" class="hidden">
         </div>
-        <div id="weddingGalleryGrid" class="grid grid-cols-2 gap-3">
-            </div>
+        <div id="weddingGalleryGrid" class="grid grid-cols-2 gap-3"></div>
     </section>
 
     <footer class="w-full text-center py-3 border-t border-stone-900 text-[10px] text-stone-600 shrink-0">
