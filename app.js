@@ -3,6 +3,7 @@ const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
 const webcamElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('photoCanvas');
+const canvasContainer = document.getElementById('canvasContainer'); // Wadah Polaroid Mini
 const captureBtn = document.getElementById('captureBtn');
 const afterCaptureBtn = document.getElementById('afterCaptureBtn');
 const retakeBtn = document.getElementById('retakeBtn');
@@ -10,6 +11,11 @@ const shareBtn = document.getElementById('shareBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
 const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
+
+// Elemen Baru Untuk Fullscreen Preview (Bug 3)
+const fullscreenPreviewModal = document.getElementById('fullscreenPreviewModal');
+const closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
+const fullscreenImg = document.getElementById('fullscreenImg');
 
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
@@ -33,8 +39,6 @@ const countdownOverlay = document.getElementById('countdownOverlay');
 const countdownText = document.getElementById('countdownText');
 const frameUI = document.getElementById('frameUI');
 const frameCardInner = document.getElementById('frameCardInner');
-const decorTop = document.getElementById('decorTop');
-const decorBottom = document.getElementById('decorBottom');
 const weddingTitle = document.getElementById('weddingTitle');
 const weddingDate = document.getElementById('weddingDate');
 const preCaptureAction = document.getElementById('preCaptureAction');
@@ -68,7 +72,7 @@ let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
-let uploadedImageElement = null; // Menyimpan objek gambar dari file galeri
+let uploadedImageElement = null;
 
 // Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
@@ -115,33 +119,29 @@ switchCameraBtn.addEventListener('click', () => {
     startWebcam();
 });
 
-// Tombol Utama Buka Modul Kamera Photobooth
 startBoothBtn.addEventListener('click', () => {
     boothSection.classList.remove('hidden');
     startWebcam();
 });
 
-// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
-// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        stopWebcamStream(); // Matikan stream kamera demi menghemat memori
+        stopWebcamStream();
         const reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
-                // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
+                frameUI.classList.add('hidden'); // Sembunyikan pandangan bingkai live preview
                 
-                // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
                 captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
@@ -154,7 +154,7 @@ async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
-    uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
+    uploadedImageElement = null;
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -201,26 +201,17 @@ window.changeFrameStyle = function(style) {
     event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
 
     if (style === 'dark') {
-        frameUI.style.borderColor = '#1c1917';
-        decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
-        decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
+        frameCardInner.className = "w-full max-w-xs mx-auto bg-stone-950/85 backdrop-blur-md px-4 py-2 rounded-xl border border-stone-800 shadow-xl flex items-center gap-3";
+        weddingTitle.className = "font-handwriting text-xl text-amber-400 font-bold tracking-wide leading-none truncate";
+        weddingDate.className = "text-[7px] text-stone-400 font-semibold tracking-wider mt-0.5 uppercase";
     } else if (style === 'classic') {
-        frameUI.style.borderColor = '#ffffff';
-        decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
-        decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
-        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
+        frameCardInner.className = "w-full max-w-xs mx-auto bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-stone-200 shadow-xl flex items-center gap-3";
+        weddingTitle.className = "font-handwriting text-xl text-stone-900 font-bold tracking-wide leading-none truncate";
+        weddingDate.className = "text-[7px] text-stone-500 font-semibold tracking-wider mt-0.5 uppercase";
     } else if (style === 'romantic') {
-        frameUI.style.borderColor = '#ffe4e6';
-        decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
-        decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
-        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
+        frameCardInner.className = "w-full max-w-xs mx-auto bg-rose-50/90 backdrop-blur-md px-4 py-2 rounded-xl border border-rose-200 shadow-xl flex items-center gap-3";
+        weddingTitle.className = "font-handwriting text-xl text-rose-700 font-bold tracking-wide leading-none truncate";
+        weddingDate.className = "text-[7px] text-rose-900/60 font-semibold tracking-wider mt-0.5 uppercase";
     }
 };
 
@@ -229,6 +220,7 @@ captureBtn.addEventListener('click', () => {
     switchCameraBtn.classList.add('hidden');
     closeBoothBtn.classList.add('hidden'); 
     settingsModal.classList.add('hidden');
+    frameUI.classList.add('hidden'); // Sembunyikan frame real-time biar tidak bergeser dobel
     
     if (useTimer) {
         countdownOverlay.classList.remove('hidden');
@@ -257,45 +249,74 @@ function triggerFlashAndCapture() {
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage(false); // Mode normal via stream kamera
+        captureImage(false);
     }, 400);
 }
 
+// Perbaikan Bug 2: Konstruksi Ulang Rendering Canvas Secara Presisi Berbentuk Split Dua Sisi
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
     if (isUploadedMode && uploadedImageElement) {
-        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
         
-        if (targetWidth > maxDimension || targetHeight > maxDimension) {
-            if (targetWidth > targetHeight) {
-                targetHeight = (maxDimension / targetWidth) * targetHeight;
-                targetWidth = maxDimension;
-            } else {
-                targetWidth = (maxDimension / targetHeight) * targetWidth;
-                targetHeight = maxDimension;
-            }
+        // Memaksa aspek rasio ideal cetak kartu nama / potret vertikal (3:4)
+        canvasElement.width = 768;
+        canvasElement.height = 1024;
+
+        // Gambar latar belakang foto agar tercakup rapi (Object Fit Cover di Canvas)
+        let imgRatio = targetWidth / targetHeight;
+        let canvasRatio = canvasElement.width / canvasElement.height;
+        let drawWidth, drawHeight, drawX, drawY;
+
+        if (imgRatio > canvasRatio) {
+            drawHeight = canvasElement.height;
+            drawWidth = canvasElement.height * imgRatio;
+            drawX = (canvasElement.width - drawWidth) / 2;
+            drawY = 0;
+        } else {
+            drawWidth = canvasElement.width;
+            drawHeight = canvasElement.width / imgRatio;
+            drawX = 0;
+            drawY = (canvasElement.height - drawHeight) / 2;
         }
-        
-        canvasElement.width = targetWidth;
-        canvasElement.height = targetHeight;
-        ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.drawImage(uploadedImageElement, drawX, drawY, drawWidth, drawHeight);
     } else {
-        canvasElement.width = webcamElement.videoWidth || 640;
-        canvasElement.height = webcamElement.videoHeight || 480;
+        // Mode jepret kamera HP langsung
+        canvasElement.width = 768;
+        canvasElement.height = 1024;
+        
+        ctx.save();
         if (currentFacingMode === 'user') {
             ctx.translate(canvasElement.width, 0);
             ctx.scale(-1, 1);
         }
-        ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        let videoWidth = webcamElement.videoWidth || 640;
+        let videoHeight = webcamElement.videoHeight || 480;
+        let videoRatio = videoWidth / videoHeight;
+        let targetRatio = canvasElement.width / canvasElement.height;
+        let sx, sy, sWidth, sHeight;
+
+        if (videoRatio > targetRatio) {
+            sHeight = videoHeight;
+            sWidth = videoHeight * targetRatio;
+            sx = (videoWidth - sWidth) / 2;
+            sy = 0;
+        } else {
+            sWidth = videoWidth;
+            sHeight = videoWidth / targetRatio;
+            sx = 0;
+            sy = (videoHeight - sHeight) / 2;
+        }
+
+        ctx.drawImage(webcamElement, sx, sy, sWidth, sHeight, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.restore();
     }
     
-    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
+    // Aplikasi filter piksel efek warna
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -305,8 +326,8 @@ function captureImage(isUploadedMode = false) {
         
         ctx.save();
         ctx.globalCompositeOperation = 'soft-light'; 
-        ctx.globalAlpha = 0.25; 
-        ctx.filter = 'blur(2px)'; 
+        ctx.globalAlpha = 0.3; 
+        ctx.filter = 'blur(3px)'; 
         ctx.drawImage(blurCanvas, 0, 0);
         ctx.restore();
     }
@@ -316,20 +337,20 @@ function captureImage(isUploadedMode = false) {
     
     if (selectedFilter === 'glowing') {
         for (let i = 0; i < data.length; i += 4) {
-            data[i] = Math.min(255, data[i] * 1.15 + 10);
-            data[i+1] = Math.min(255, data[i+1] * 1.12 + 10);
-            data[i+2] = Math.min(255, data[i+2] * 1.08 + 5);
+            data[i] = Math.min(255, data[i] * 1.12 + 12);
+            data[i+1] = Math.min(255, data[i+1] * 1.10 + 10);
+            data[i+2] = Math.min(255, data[i+2] * 1.05 + 5);
         }
     } else if (selectedFilter === 'flawless') {
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i], g = data[i+1], b = data[i+2];
-            data[i] = Math.min(255, r * 1.18 + 12);
-            data[i+1] = Math.min(255, g * 1.08 + 5);
-            data[i+2] = Math.min(255, b * 1.12 + 8);
+            data[i] = Math.min(255, r * 1.15 + 10);
+            data[i+1] = Math.min(255, g * 1.06 + 5);
+            data[i+2] = Math.min(255, b * 1.10 + 6);
         }
     } else if (selectedFilter === 'warm') {
         for (let i = 0; i < data.length; i += 4) {
-            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.9;
+            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.88;
         }
     } else if (selectedFilter === 'bw') {
         for (let i = 0; i < data.length; i += 4) {
@@ -346,63 +367,86 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
+    // Konfigurasi Palet Warna Frame Tema
     let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
-    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
+    let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.9)', classic: 'rgba(255, 255, 255, 0.92)', romantic: 'rgba(255, 241, 242, 0.92)' };
+    let innerBorderColors = { dark: '#2e2a24', classic: '#e7e5e4', romantic: '#fecdd3' };
 
-    const borderWidth = canvasElement.width * 0.04;
+    // 1. Gambar Border Luar
+    const borderWidth = canvasElement.width * 0.035; // Ketebalan bingkai tepi tipis elegan
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    const boxHeight = canvasElement.height * 0.16;
-    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
-    const boxX = borderWidth + (canvasElement.width * 0.08);
+    // 2. Definisi Area Kotak Teks Informasi Bawah (Wadah Utama Berbagi Ruang)
+    const boxHeight = canvasElement.height * 0.15;
+    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.025);
+    const boxX = borderWidth + (canvasElement.width * 0.04);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    const assetSize = canvasElement.width * 0.26;
-    const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 16);
+    ctx.fill();
+    
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = innerBorderColors[selectedFrameStyle];
+    ctx.stroke();
+
+    // 3. Gambar Ilustrasi Pengantin (Sisi Kiri Di Dalam Kotak)
+    const paddingBox = 16;
+    const assetHeight = boxHeight - (paddingBox * 2);
+    const assetWidth = assetHeight; // Jaga aspek rasio kotak 1:1 murni
+    const assetX = boxX + paddingBox + 6;
+    const assetY = boxY + paddingBox;
 
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
-        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
+        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetWidth, assetHeight);
     }
 
-    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
-    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-
+    // 4. Penggambaran Komponen Teks Informasi (Sisi Kanan Di Dalam Kotak)
+    const contentStartX = assetX + assetWidth + 20; 
     let decorSet = {
-        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
-        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
-        romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
+        dark: { left: "✨ ✦", right: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic: { left: "🌸 ✦", right: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        romantic: { left: "❤️ ✦", right: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `${canvasElement.width * 0.035}px Arial`;
-    ctx.textAlign = 'left';
-    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
-    ctx.textAlign = 'right';
-    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
-    ctx.textAlign = 'center';
-    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
-
-    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
-        ctx.fillStyle = textColors[selectedFrameStyle];
-        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
-        ctx.textAlign = 'center';
-        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+    // Render Font Dinamis untuk Memastikan Teks Tidak Bergeser Keluar
+    document.fonts.load(`italic ${canvasElement.width * 0.055}px 'Great Vibes'`).then(() => {
         
-        ctx.fillStyle = subTextColors[selectedFrameStyle];
-        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+        // A. Emoji Dekorasi Atas
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `${canvasElement.width * 0.028}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.fillText(currentDecor.left, contentStartX, boxY + 32);
 
+        // B. Nama Pengantin Utama (Gunakan koordinat left agar seimbang di kanan gambar)
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `italic ${canvasElement.width * 0.055}px 'Great Vibes', cursive`; 
+        ctx.fillText("Sabrina & Raka", contentStartX, boxY + (boxHeight / 1.8));
+        
+        // C. Baris Tanggal & Slogan Wedding
+        ctx.fillStyle = subTextColors[selectedFrameStyle];
+        ctx.font = `bold ${canvasElement.width * 0.02}px sans-serif`;
+        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", contentStartX, boxY + (boxHeight / 1.25));
+
+        // D. Emoji Dekorasi Bawah (Sekarang dipindah ke samping kanan agar tidak menumpuk teks)
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `${canvasElement.width * 0.026}px Arial`;
+        ctx.textAlign = 'right';
+        ctx.fillText(currentDecor.bottom, boxX + boxWidth - paddingBox, boxY + boxHeight - paddingBox);
+
+        // Ekspor Hasil Akhir Sebagai Blob Berkas PNG
         canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
     });
 
+    // Perbaikan Bug 3: Sembunyikan kamera, tampilkan kontainer polaroid mini
     webcamElement.classList.add('hidden');
-    canvasElement.classList.remove('hidden');
+    canvasContainer.classList.remove('hidden');
     afterCaptureBtn.classList.remove('hidden');
     
     initAudioRecorder();
@@ -431,6 +475,18 @@ recordBtn.addEventListener('click', () => {
     } else {
         mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
     }
+});
+
+// Perbaikan Bug 3: Handler klik polaroid untuk membuka mode gambar layar penuh (Fullscreen Preview)
+canvasContainer.addEventListener('click', () => {
+    if (canvasElement) {
+        const dataUrl = canvasElement.toDataURL('image/png');
+        fullscreenImg.src = dataUrl;
+        fullscreenPreviewModal.classList.remove('hidden');
+    }
+});
+closeFullscreenBtn.addEventListener('click', () => {
+    fullscreenPreviewModal.classList.add('hidden');
 });
 
 function triggerShare(blobFile) {
@@ -512,17 +568,19 @@ function resetBooth() {
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
-    galleryInput.value = ""; // Bersihkan berkas terunggah lama
+    galleryInput.value = ""; 
     uploadedImageElement = null;
-    webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
+    webcamElement.classList.remove('hidden'); 
+    canvasContainer.classList.add('hidden'); // Sembunyikan kontainer polaroid mini
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
     switchCameraBtn.classList.remove('hidden');
     closeBoothBtn.classList.remove('hidden'); 
+    frameUI.classList.remove('hidden'); // Munculkan kembali bingkai tipis untuk bidikan baru
 }
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
+    startWebcam(); 
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
