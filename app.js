@@ -78,7 +78,7 @@ let galleryData = [
 let activeSelectedId = null;
 
 // =========================================================================
-// FIX BUG 1: OPTIMASI PREVIEW CONTAINER AGAR TERANGKAT KE ATAS & TIDAK TERTUTUP
+// SOLUSI BUG 1: WADAH PREVIEW GAMBAR BERSIH (AMANKAN DARI TIMPAAN TOMBOL & BOX)
 // =========================================================================
 let photoPreviewContainer = document.getElementById('photoPreviewContainer');
 let previewImage = document.getElementById('previewImage');
@@ -86,20 +86,21 @@ let previewImage = document.getElementById('previewImage');
 if (!photoPreviewContainer) {
     photoPreviewContainer = document.createElement('div');
     photoPreviewContainer.id = 'photoPreviewContainer';
-    // Diberi padding bottom masif (pb-24) dan max-h ketat (max-h-[35vh]) agar terangkat dari barisan tombol bawah
-    photoPreviewContainer.className = 'w-full hidden flex flex-col justify-center items-center px-4 pb-28 pt-2 z-10';
+    // Gunakan posisi relatif dengan margin bawah yang aman (pb-32) agar terangkat tinggi dari jangkauan tombol rekam audio
+    photoPreviewContainer.className = 'w-full hidden flex flex-col justify-center items-center px-4 pb-36 pt-4 z-30 block';
     photoPreviewContainer.innerHTML = `
-        <div class="relative w-full max-w-[270px] mx-auto flex flex-col items-center">
-            <img id="previewImage" class="w-auto max-w-full max-h-[35vh] rounded-xl shadow-2xl border-4 border-stone-900 object-contain active:scale-[0.97] transition-all" src="" alt="Pratinjau Foto">
-            <div class="mt-2 text-[9px] text-stone-400 font-semibold bg-stone-950/80 px-2.5 py-1 rounded-full shadow pointer-events-none">🔍 Sentuh foto untuk Fullscreen</div>
+        <div class="relative w-full max-w-[260px] mx-auto flex flex-col items-center">
+            <img id="previewImage" class="w-auto max-w-full max-h-[32vh] rounded-xl shadow-2xl border-4 border-stone-900 object-contain" src="" alt="Pratinjau Foto">
+            <div class="mt-2 text-[9px] text-stone-400 font-semibold bg-stone-950/80 px-2 py-0.5 rounded-full pointer-events-none shadow-md">🔍 Sentuh foto untuk Fullscreen</div>
         </div>
     `;
+    // Sisipkan wadah pratinjau tepat sebelum canvas tersembunyi
     const parentContainer = canvasElement.parentNode;
     parentContainer.insertBefore(photoPreviewContainer, canvasElement);
     previewImage = document.getElementById('previewImage');
 }
 
-// Pastikan canvas mentah disembunyikan secara absolut
+// Matikan penampilan element canvas default
 canvasElement.style.setProperty('display', 'none', 'important');
 canvasElement.classList.add('hidden');
 
@@ -210,7 +211,6 @@ async function startWebcam() {
     }
     uploadedImageElement = null; 
     
-    // Paksa display block via inline style agar lepas dari pengaruh flex pendonor kolom
     webcamElement.style.setProperty('display', 'block', 'important');
     webcamElement.classList.remove('hidden');
     
@@ -226,7 +226,7 @@ async function startWebcam() {
             webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
         };
     } catch (err) {
-        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
+        alert("Akses kamera ditolak atau perangkat tidak mendukung.");
     }
 }
 
@@ -323,9 +323,13 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // MATIKAN SEPENUHNYA DISPLAY WEBCAM SECARA ABSOLUT
+    // MATIKAN & SEMBUNYIKAN LIVE CAMERA TOTAL AGAR TIDAK TERBELAH
     webcamElement.style.setProperty('display', 'none', 'important');
     webcamElement.classList.add('hidden');
+
+    // SOLUSI UTAMA BUG 1: Sembunyikan box text HTML asli bawaan layout camera live!
+    if (frameUI) frameUI.classList.add('hidden');
+    if (frameCardInner) frameCardInner.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
         const maxDimension = 1280;
@@ -371,7 +375,7 @@ function captureImage(isUploadedMode = false) {
         stopWebcamStream();
     }
     
-    // Pemrosesan Filter Efek Piksel
+    // Pemrosesan Filter
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -430,36 +434,36 @@ function captureImage(isUploadedMode = false) {
 }
 
 // =========================================================================
-// FIX BUG 2: KUNCI MATEMATIS TITIK KOORDINAT ASSET DAN TEXT (ANTI-TABRAKAN)
+// SOLUSI BUG 2: MATEMATIKAL LOCK POSISI EMOJI & TEKS AGAR TIDAK TABRAKAN
 // =========================================================================
 function drawCanvasFrame(ctx) {
     let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
-    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.9)', classic: 'rgba(255, 255, 255, 0.85)', romantic: 'rgba(255, 241, 242, 0.9)' };
+    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.92)', classic: 'rgba(255, 255, 255, 0.9)', romantic: 'rgba(255, 241, 242, 0.92)' };
 
     const borderWidth = canvasElement.width * 0.04;
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // Kunci tinggi box teks secara ketat agar stabil di berbagai rasio kamera portrait
-    const boxHeight = canvasElement.height * 0.13; 
+    // Kunci tinggi box teks dasar polaroid secara proporsional
+    const boxHeight = canvasElement.height * 0.14; 
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.03);
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // FIX KOORDINAT EMOJI: Dikurangi 1.25x dari tinggi asset agar melayang murni di atas garis boxY luar
+    // AMANKAN JARAK EMOJI: Dorong stiker melayang aman murni di atas boxY dengan pengali 1.25
     const assetSize = canvasElement.width * 0.20;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - (assetSize * 1.12); 
+    const assetY = boxY - (assetSize * 1.25); 
 
-    // Render Gambar Maskot Pengantin
+    // Gambar Stiker Pengantin
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // Render Kotak Latar Belakang Teks
+    // Gambar Kotak Background Text Label
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
@@ -470,7 +474,7 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Menggambar Ornamen Pojok Kotak Teks
+    // Ornamen Teks Sudut
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.032}px Arial`;
     ctx.textAlign = 'left';
@@ -480,18 +484,18 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
 
-    // FIX POSISI KALIMAT NAMA: Diturunkan ke titik pembagi / 1.55 agar menjauh dari batas atas kotak (Bebas tabrakan stiker!)
+    // AMANKAN KALIMAT NAMA: Diturunkan posisinya (dibagi 1.48) agar teks berada persis di tengah-bawah kotak (Bebas dari sundulan stiker!)
     ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.070}px 'Great Vibes', cursive`; 
+    ctx.font = `italic ${canvasElement.width * 0.068}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.55));
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.48));
     
-    // Render Baris Subcaption / Tanggal Bawah
+    // Subcaption Tanggal
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.022}px sans-serif`;
     ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.15));
 
-    // Kirim Hasil Pemrosesan ke Tag Preview Image HTML
+    // Masukkan Hasil Olahan Gambar ke Wadah Pratinjau Bersih HTML
     setTimeout(() => {
         const dataUrl = canvasElement.toDataURL('image/png');
         previewImage.src = dataUrl;
@@ -519,12 +523,12 @@ async function initAudioRecorder() {
             audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Akses mikrofon dinonaktifkan.");
+        console.log("Akses mikrofon dilewati.");
     }
 }
 
 recordBtn.addEventListener('click', () => {
-    if (!mediaRecorder) return alert("Perangkat mikrofon belum siap.");
+    if (!mediaRecorder) return alert("Mikrofon belum diizinkan.");
     if (mediaRecorder.state === "inactive") {
         audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
     } else {
@@ -610,7 +614,7 @@ function openGalleryModal(id) {
 closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
 
 modalDeleteBtn.addEventListener('click', () => { 
-    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
+    if (confirm("Apakah Anda yakin ingin menghapus foto ini?")) { 
         galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
         renderGallery(); 
         galleryModal.classList.add('hidden'); 
@@ -618,7 +622,7 @@ modalDeleteBtn.addEventListener('click', () => {
 });
 
 // =========================================================================
-// FIX BUG 3: STRIP / FLUSH SEPENUHNYA DATA VISUAL PREVIEW SISA SEBELUMNYA
+// SOLUSI BUG 3: RESET TOTAL & FLUSH KONTEN AGAR TIDAK TERBELAH / DOUBLE UI
 // =========================================================================
 function resetBooth() {
     audioPlayback.classList.add('hidden'); 
@@ -632,19 +636,23 @@ function resetBooth() {
     galleryInput.value = ""; 
     uploadedImageElement = null;
     
-    // 1. Hilangkan src gambar preview secara total (Anti sisa visual)
+    // 1. Bersihkan src preview agar browser tidak merender ulang gambar sisa
     if (previewImage) {
         previewImage.removeAttribute('src');
         previewImage.src = "";
     }
     
-    // 2. Kunci paksa container pratinjau gambar agar benar-benar lenyap dari baris layout DOM
+    // 2. Kunci container preview gambar ke keadaan mati total
     if (photoPreviewContainer) {
         photoPreviewContainer.classList.add('hidden');
         photoPreviewContainer.style.setProperty('display', 'none', 'important');
     }
 
-    // 3. Bangkitkan kembali penampung video utama kamera secara tunggal mandiri
+    // 3. KEMBALIKAN BINGKAI LIVE CAMERA HTML ASLI UNTUK KAMERA AKTIF
+    if (frameUI) frameUI.classList.remove('hidden');
+    if (frameCardInner) frameCardInner.classList.remove('hidden');
+
+    // 4. Nyalakan ulang penampung video camera utama secara mandiri
     webcamElement.classList.remove('hidden'); 
     webcamElement.style.setProperty('display', 'block', 'important');
     
@@ -657,10 +665,10 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    // Beri sedikit jeda microtask bagi browser untuk membersihkan DOM display sebelum menyalakan stream kamera baru
+    // Microtask delay agar browser menyelesaikan perubahan display CSS sebelum kamera di-stream kembali
     setTimeout(() => {
         startWebcam(); 
-    }, 50);
+    }, 60);
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
