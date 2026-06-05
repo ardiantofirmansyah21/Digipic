@@ -58,7 +58,8 @@ const successToast = document.getElementById('successToast');
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
-// State Global Kontrol Aplikasilet selectedFrameStyle = 'dark'; 
+// State Global Kontrol Aplikasi
+let selectedFrameStyle = 'dark'; 
 let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
@@ -259,6 +260,12 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
+    // PERBAIKAN: Sembunyikan video live streaming seketika tombol rana dipicu
+    if (!isUploadedMode) {
+        webcamElement.classList.add('hidden');
+        canvasElement.classList.remove('hidden');
+    }
+    
     // Menentukan dimensi berdasarkan input gambar
     if (isUploadedMode && uploadedImageElement) {
         const maxDimension = 1280;
@@ -279,6 +286,7 @@ function captureImage(isUploadedMode = false) {
         canvasElement.height = targetHeight;
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
+        // Ambil frame statis dari video saat ini
         canvasElement.width = webcamElement.videoWidth || 640;
         canvasElement.height = webcamElement.videoHeight || 480;
         if (currentFacingMode === 'user') {
@@ -287,6 +295,9 @@ function captureImage(isUploadedMode = false) {
         }
         ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        // PERBAIKAN: Matikan stream kamera agar gambar membeku total
+        stopWebcamStream();
     }
     
     // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
@@ -402,11 +413,8 @@ function drawCanvasFrame(ctx) {
         canvasElement.toBlob((blob) => { 
             currentPhotoBlob = blob; 
             
-            // Konfigurasi interface pasca pemotretan / pengunggahan berkas selesai
-            webcamElement.classList.add('hidden');
-            canvasElement.classList.remove('hidden');
+            // Tampilkan tombol aksi simpan/unggah sesudah gambar siap
             afterCaptureBtn.classList.remove('hidden');
-            
             initAudioRecorder();
         }, 'image/png');
     });
