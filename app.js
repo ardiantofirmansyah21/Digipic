@@ -77,6 +77,47 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
+// ==========================================
+// INISIALISASI ELEMEN UTK POPUP FULLSCREEN PREVIEW
+// ==========================================
+let previewLightbox = document.getElementById('previewLightbox');
+let lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+let lightboxImg = document.getElementById('lightboxImg');
+
+if (!previewLightbox) {
+    // Membuat elemen lightbox secara dinamis jika belum ada di HTML
+    previewLightbox = document.createElement('div');
+    previewLightbox.id = 'previewLightbox';
+    previewLightbox.className = 'fixed inset-0 bg-black/95 z-[100] hidden flex flex-col items-center justify-center p-4';
+    
+    previewLightbox.innerHTML = `
+        <button id="lightboxCloseBtn" class="absolute top-4 right-4 bg-white/20 text-white rounded-full p-3 text-xl font-bold backdrop-blur-sm active:scale-95 transition-all">&times;</button>
+        <div class="max-w-full max-h-[85vh] flex items-center justify-center">
+            <img id="lightboxImg" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl border border-stone-800" src="" alt="Full Preview">
+        </div>
+        <p class="text-xs text-stone-400 mt-3 font-medium tracking-wide">Sentuh tombol X atau area luar untuk menutup</p>
+    `;
+    document.body.appendChild(previewLightbox);
+    
+    lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+    lightboxImg = document.getElementById('lightboxImg');
+    
+    // Event close saat klik tombol X atau klik background hitam luar gambar
+    lightboxCloseBtn.addEventListener('click', () => previewLightbox.classList.add('hidden'));
+    previewLightbox.addEventListener('click', (e) => {
+        if (e.target === previewLightbox) previewLightbox.classList.add('hidden');
+    });
+}
+
+// Tambahkan interaksi klik pada canvas utama agar bisa memicu tampilan fullscreen
+canvasElement.style.cursor = 'pointer';
+canvasElement.addEventListener('click', () => {
+    if (currentPhotoBlob) {
+        lightboxImg.src = URL.createObjectURL(currentPhotoBlob);
+        previewLightbox.classList.remove('hidden');
+    }
+});
+
 // Event Listeners Kontrol UI Modals
 openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
@@ -136,7 +177,6 @@ galleryInput.addEventListener('change', (e) => {
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
                 
-                // Amankan rendering: Berikan jeda 100ms agar decoding internal image selesai sempurna
                 setTimeout(() => {
                     captureImage(true); 
                 }, 100);
@@ -260,20 +300,16 @@ function triggerFlashAndCapture() {
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
-    
-    // 1. Sembunyikan element kamera langsung
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
-        // --- JALUR FOTO DARI GALERI ---
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
         
         if (targetWidth === 0 || targetHeight === 0) {
-            // Fallback aman jika ukuran gagal dibaca browser mobile
             targetWidth = 800;
-            targetHeight = 1000;
+            targetHeight = 1060;
         }
 
         if (targetWidth > maxDimension || targetHeight > maxDimension) {
@@ -286,31 +322,33 @@ function captureImage(isUploadedMode = false) {
             }
         }
         
-        // Setup internal resolution canvas
         canvasElement.width = targetWidth;
         canvasElement.height = targetHeight;
         
-        // Force layouting CSS di viewport layar agar terlihat nyata
+        // FIX KENDALA 1: Amankan CSS viewport preview di HP agar tidak meluber menutupi tombol bawah
         canvasElement.style.setProperty('display', 'block', 'important');
-        canvasElement.style.width = "100%";
-        canvasElement.style.height = "auto";
+        canvasElement.style.width = "auto";
+        canvasElement.style.maxWidth = "100%";
+        canvasElement.style.maxHeight = "52vh"; // Dibatasi setengah layar vertikal agar tombol selalu kelihatan
+        canvasElement.style.margin = "0 auto";
         canvasElement.style.aspectRatio = `${targetWidth} / ${targetHeight}`;
         
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
-        // --- JALUR TAKE PICTURE KAMERA ---
         webcamElement.pause(); 
-        
         const vWidth = webcamElement.videoWidth || 640;
         const vHeight = webcamElement.videoHeight || 480;
         
         canvasElement.width = vWidth;
         canvasElement.height = vHeight;
         
+        // Terapkan pembatas ketinggian preview yang sama pada mode jepret kamera
         canvasElement.style.setProperty('display', 'block', 'important');
-        canvasElement.style.width = "100%";
-        canvasElement.style.height = "auto";
+        canvasElement.style.width = "auto";
+        canvasElement.style.maxWidth = "100%";
+        canvasElement.style.maxHeight = "52vh";
+        canvasElement.style.margin = "0 auto";
         canvasElement.style.aspectRatio = `${vWidth} / ${vHeight}`;
         
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -375,10 +413,8 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // 2. Munculkan Canvas ke DOM secara penuh
     canvasElement.classList.remove('hidden');
 
-    // 3. Eksekusi bingkai dekoratif dengan requestAnimationFrame ganda agar render gambar galeri selesai dulu
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             drawCanvasFrame(ctx);
@@ -392,24 +428,29 @@ function drawCanvasFrame(ctx) {
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
     let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
 
+    // Kalkulasi ketebalan frame pinggir polaroid
     const borderWidth = canvasElement.width * 0.04;
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    const boxHeight = canvasElement.height * 0.16;
-    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
+    // FIX KENDALA 2: Penguncian rasio ukuran kotak nama agar stabil
+    const boxHeight = canvasElement.height * 0.14; 
+    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.03);
     const boxX = borderWidth + (canvasElement.width * 0.08);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    const assetSize = canvasElement.width * 0.26;
+    // KOREKSI JARAK ELEMEN: Tarik koordinat stiker pengantin menjauh ke atas boxY agar tidak tumpang tindih
+    const assetSize = canvasElement.width * 0.22;
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+    const assetY = boxY - assetSize + (canvasElement.height * 0.015); // Dikunci di atas batas kotak teks
 
+    // Render Gambar Maskot Stiker Pernikahan
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
+    // Render Background Box Label Teks
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
 
@@ -420,25 +461,27 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
+    // Menggambar Ornamen Sudut Kotak Teks secara aman
     ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `${canvasElement.width * 0.035}px Arial`;
+    ctx.font = `${canvasElement.width * 0.032}px Arial`;
     ctx.textAlign = 'left';
-    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
+    ctx.fillText(currentDecor.topL, boxX + 12, boxY + (canvasElement.height * 0.03));
     ctx.textAlign = 'right';
-    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
+    ctx.fillText(currentDecor.topR, boxX + boxWidth - 12, boxY + (canvasElement.height * 0.03));
     ctx.textAlign = 'center';
-    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.015));
 
+    // Render Nama Utama Pengantin - Diturunkan sedikit posisinya agar tidak bertabrakan dengan stiker
     ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+    ctx.font = `italic ${canvasElement.width * 0.075}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.8));
     
+    // Render Subteks Tanggal Pernikahan
     ctx.fillStyle = subTextColors[selectedFrameStyle];
-    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+    ctx.font = `bold ${canvasElement.width * 0.022}px sans-serif`;
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.2));
 
-    // SOLUSI ASINKRONUS UTAMA: Berikan jeda 150ms agar browser SELESAI memunculkan visual frame sebelum ditarik datanya menjadi Blob biner
     setTimeout(() => {
         canvasElement.toBlob((blob) => { 
             currentPhotoBlob = blob; 
