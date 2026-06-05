@@ -521,13 +521,34 @@ uploadWeddingBtn.addEventListener('click', () => {
 
 // ... [Kode bagian atas app.js tetap sama] ...
 
+// ==========================================
+// DEKLARASI VARIABEL UTAMANYA (Pastikan sudah ada di atas)
+// ==========================================
+// const galleryModal = document.getElementById('galleryModal');
+// const modalImg = document.getElementById('modalImg');
+// const modalAudio = document.getElementById('modalAudio');
+// const noAudioTxt = document.getElementById('noAudioTxt');
+// const modalShareBtn = document.getElementById('modalShareBtn');
+// const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+// const closeModalBtn = document.getElementById('closeModalBtn');
+// let activeSelectedId = null;
+
+// ... [Kode logic kamera, capture, dan triggerShare utama tetap sama] ...
+
+
+// ==========================================
+// LOGIK MODAL GALERI KEBAHAGIAAN
+// ==========================================
+
 function openGalleryModal(id) {
+    // Cari data item berdasarkan id uniknya
     const item = galleryData.find(p => p.id === id); 
     if (!item) return;
     
-    activeSelectedId = id; 
+    activeSelectedId = id; // Set ID aktif yang sedang dibuka
     modalImg.src = item.photoUrl;
     
+    // Validasi pengecekan audio rekaman suara pendukung
     if (item.audioUrl) { 
         modalAudio.src = item.audioUrl; 
         modalAudio.classList.remove('hidden'); 
@@ -541,46 +562,55 @@ function openGalleryModal(id) {
     galleryModal.classList.remove('hidden');
 }
 
-// Tambahkan Event Listener untuk Tombol Bagikan di dalam Modal Galeri ini:
+// FIX BUG: Memasang Event Listener Share pada Tombol Bagikan di Dalam Modal Galeri
 modalShareBtn.addEventListener('click', async () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
     if (!item) return;
 
     try {
-        // 1. Jika foto baru diambil (punya rawPhotoBlob), langsung bagikan file aslinya
+        // Kasus 1: Jika foto baru saja diambil oleh user (punya data mentah rawPhotoBlob)
         if (item.rawPhotoBlob) {
             triggerShare(item.rawPhotoBlob);
         } 
-        // 2. Jika foto bawaan / dummy (berupa URL web internet), kita download dulu ke blob lalu bagikan
+        // Kasus 2: Jika foto bawaan/dummy awal (berupa external URL link internet)
         else if (item.photoUrl.startsWith('http')) {
             modalShareBtn.innerText = "Memuat...";
+            
+            // Download gambar sementara menjadi objek Blob agar bisa dilempar ke Web Share API HP
             const response = await fetch(item.photoUrl);
             const blob = await response.blob();
             modalShareBtn.innerText = "Bagikan";
             
             const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
+            
+            // Periksa kecocokan Web Share API perangkat
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: 'Galeri Kebahagiaan Sabrina & Raka',
-                    text: item.label
+                    text: 'Momen kebahagiaan di pernikahan Sabrina & Raka!'
                 });
             } else {
-                alert("Fitur bagikan file tidak didukung di browser ini. Silakan unduh foto terlebih dahulu.");
+                alert("Browser ini tidak mendukung pembagian file gambar secara langsung.");
             }
         }
     } catch (err) {
-        console.error("Gagal membagikan:", err);
+        console.error("Gagal memproses pembagian konten: ", err);
         modalShareBtn.innerText = "Bagikan";
     }
 });
 
-closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
+// Aksi Tutup Modal
+closeModalBtn.addEventListener('click', () => { 
+    galleryModal.classList.add('hidden'); 
+    modalAudio.pause(); // Matikan lagu jika modal ditutup
+});
 
+// Aksi Hapus Item dari Galeri
 modalDeleteBtn.addEventListener('click', () => { 
     if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
         galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
-        renderGallery(); 
+        renderGallery(); // Render ulang tampilan grid halaman utama
         galleryModal.classList.add('hidden'); 
     } 
 });
