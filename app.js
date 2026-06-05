@@ -1,6 +1,6 @@
-// Pengikatan Elemen DOM Utama
+// Pengikatan Elemen DOM Utama (Kembali ke struktur asli halaman tunggal)
 const startBoothBtn = document.getElementById('startBoothBtn');
-const boothModal = document.getElementById('booth-modal');
+const boothSection = document.getElementById('booth-section');
 const webcamElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('photoCanvas'); 
 const captureBtn = document.getElementById('captureBtn');
@@ -13,7 +13,6 @@ const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 const audioPlayback = document.getElementById('audioPlayback');
-const scrollToGalleryBtn = document.getElementById('scrollToGalleryBtn');
 
 let mediaRecorder;
 let audioChunks = [];
@@ -69,11 +68,6 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
-// Fungsi Scroll Halus ke Galeri
-scrollToGalleryBtn.addEventListener('click', () => {
-    document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
-});
-
 triggerUploadModalBtn.addEventListener('click', () => {
     nameInputModal.classList.remove('hidden');
     guestNameInput.focus();
@@ -82,8 +76,9 @@ cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hi
 
 closeBoothBtn.addEventListener('click', () => {
     stopWebcamStream();
-    boothModal.classList.add('hidden');
+    boothSection.classList.add('hidden');
     resetBooth();
+    startBoothBtn.classList.remove('hidden');
 });
 
 function stopWebcamStream() {
@@ -103,13 +98,18 @@ switchCameraBtn.addEventListener('click', () => {
     startWebcam();
 });
 
+// MEMASTIKAN FUNGSI TOMBOL PHOTOBOOTH NORMAL KEMBALI
 startBoothBtn.addEventListener('click', () => {
-    boothModal.classList.remove('hidden');
+    startBoothBtn.classList.add('hidden');
+    boothSection.classList.remove('hidden');
     resetBooth();
     startWebcam();
 });
 
-triggerGalleryBtn.addEventListener('click', () => galleryInput.click());
+// MEMASTIKAN FUNGSI UNGGAH MANUAL BERFUNGSI NORMAL KEMBALI
+triggerGalleryBtn.addEventListener('click', () => {
+    galleryInput.click();
+});
 
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -119,7 +119,8 @@ galleryInput.addEventListener('change', (e) => {
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
-                boothModal.classList.remove('hidden'); // Tetap jalankan di dalam layar popup khusus
+                startBoothBtn.classList.add('hidden');
+                boothSection.classList.remove('hidden');
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
@@ -169,21 +170,21 @@ window.changeFrameStyle = function(style) {
         frameUI.style.borderColor = '#0c0a09';
         decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
         decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-stone-800/60 text-center flex flex-col items-center";
+        frameCardInner.className = "w-full bg-stone-950/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-amber-400 font-bold leading-none";
         weddingDate.className = "text-[6px] text-stone-400 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'classic') {
         frameUI.style.borderColor = '#ffffff';
         decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
         decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
-        frameCardInner.className = "w-full bg-white/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-stone-200 text-center flex flex-col items-center";
+        frameCardInner.className = "w-full bg-white/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-200 text-center shadow-lg flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-stone-900 font-bold leading-none";
         weddingDate.className = "text-[6px] text-stone-500 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'romantic') {
         frameUI.style.borderColor = '#ffe4e6';
         decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
         decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
-        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-rose-200 text-center flex flex-col items-center";
+        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-rose-200 text-center shadow-lg flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-rose-700 font-bold leading-none";
         weddingDate.className = "text-[6px] text-rose-900/60 font-medium tracking-widest uppercase mt-0.5";
     }
@@ -216,9 +217,9 @@ function triggerFlashAndCapture() {
     
     setTimeout(() => {
         flashEffect.style.opacity = '0';
-        setTimeout(() => { flashEffect.classList.add('hidden'); }, 150);
+        setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
         captureImage(false); 
-    }, 300);
+    }, 400);
 }
 
 function captureImage(isUploadedMode = false) {
@@ -446,13 +447,14 @@ uploadWeddingBtn.addEventListener('click', () => {
         });
         
         nameInputModal.classList.add('hidden');
-        boothModal.classList.add('hidden'); 
+        boothSection.classList.add('hidden'); 
         
         successToast.classList.remove('hidden');
         setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
 
         renderGallery(); 
         resetBooth();
+        startBoothBtn.classList.remove('hidden');
         
         document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
     }, 1000);
