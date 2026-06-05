@@ -132,10 +132,10 @@ async function startWebcam() {
     }
     uploadedImageElement = null; 
     
-    webcamElement.style.setProperty('display', 'block', 'important');
-    webcamElement.classList.remove('hidden');
     document.getElementById('webcam-container').style.setProperty('display', 'block', 'important');
     document.getElementById('webcam-container').classList.remove('hidden');
+    webcamElement.classList.remove('hidden');
+    frameUI.classList.remove('hidden'); // Memastikan Frame Live muncul kembali
     
     try {
         const constraints = {
@@ -164,23 +164,23 @@ window.changeFrameStyle = function(style) {
         frameUI.style.borderColor = '#1c1917';
         decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
         decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/90 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center";
-        weddingTitle.className = "font-handwriting text-2xl text-amber-400 font-bold leading-none";
-        weddingDate.className = "text-[7px] text-stone-400 font-medium tracking-widest uppercase mt-1";
+        frameCardInner.className = "w-full bg-stone-950/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center";
+        weddingTitle.className = "font-handwriting text-xl text-amber-400 font-bold leading-none";
+        weddingDate.className = "text-[6px] text-stone-400 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'classic') {
         frameUI.style.borderColor = '#ffffff';
         decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
         decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
-        frameCardInner.className = "w-full bg-white/95 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-stone-200 text-center shadow-lg flex flex-col items-center";
-        weddingTitle.className = "font-handwriting text-2xl text-stone-900 font-bold leading-none";
-        weddingDate.className = "text-[7px] text-stone-500 font-medium tracking-widest uppercase mt-1";
+        frameCardInner.className = "w-full bg-white/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-200 text-center shadow-lg flex flex-col items-center";
+        weddingTitle.className = "font-handwriting text-xl text-stone-900 font-bold leading-none";
+        weddingDate.className = "text-[6px] text-stone-500 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'romantic') {
         frameUI.style.borderColor = '#ffe4e6';
         decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
         decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
-        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-rose-200 text-center shadow-lg flex flex-col items-center";
-        weddingTitle.className = "font-handwriting text-2xl text-rose-700 font-bold leading-none";
-        weddingDate.className = "text-[7px] text-rose-900/60 font-medium tracking-widest uppercase mt-1";
+        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-rose-200 text-center shadow-lg flex flex-col items-center";
+        weddingTitle.className = "font-handwriting text-xl text-rose-700 font-bold leading-none";
+        weddingDate.className = "text-[6px] text-rose-900/60 font-medium tracking-widest uppercase mt-0.5";
     }
 };
 
@@ -219,9 +219,10 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // Matikan tampilan kontainer live view beserta bingkai HTML luarnya
+    // SEMBUNYIKAN FRAME LIVE KAMERA AGAR TIDAK BOCOR KELUAR
     document.getElementById('webcam-container').style.setProperty('display', 'none', 'important');
     document.getElementById('webcam-container').classList.add('hidden');
+    frameUI.classList.add('hidden'); 
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
@@ -298,16 +299,13 @@ function captureImage(isUploadedMode = false) {
     });
 }
 
-// =========================================================================
-// SOLUSI TOTAL BUG TATANAN LAYOUT & COMPENSATE TRANSPARENT PADDING ASSET
-// =========================================================================
 function drawCanvasFrame(ctx) {
     let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
     let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.95)', classic: 'rgba(255, 255, 255, 0.95)', romantic: 'rgba(255, 241, 242, 0.95)' };
 
-    // 1. Gambar Bingkai Utama Polaroid
+    // 1. Bingkai Utama Polaroid (Stroke Terluar)
     const borderWidth = canvasElement.width * 0.045; 
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
@@ -319,22 +317,18 @@ function drawCanvasFrame(ctx) {
     const boxX = borderWidth + (canvasElement.width * 0.05);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // =====================================================================
-    // DETEKSI & POTONG TRANSPARENT SPACE: Modifikasi Y untuk melumpuhkan luapan stiker
-    // =====================================================================
+    // 3. Kompensasi Padding Kosong pada Asset Pengantin
     const assetSize = canvasElement.width * 0.18; 
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    
-    // 'paddingCropOffset' memotong area kosong bawaan file pengantin.png Anda sebesar 18% dari tinggi stiker
     const paddingCropOffset = assetSize * 0.18; 
     const assetY = boxY - assetSize + paddingCropOffset; 
 
-    // Menggambar Gambar Stiker Pengantin yang Telah Dikompensasi Posisinya
+    // Gambar Stiker Pengantin (Render di dalam Canvas)
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // Gambar Kotak Background Tempat Teks Latar Belakang
+    // Kotak Latar Belakang Teks
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     
@@ -349,7 +343,7 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Ornamen Pojok Kiri & Kanan Atas Box
+    // Ornamen Teks
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.030}px Arial`;
     ctx.textAlign = 'left';
@@ -359,18 +353,18 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
 
-    // KUNCI AMAN POSISI NAMA: Diturunkan sedikit ke bawah agar tidak tertabrak bagian ekor stiker pengantin
+    // Nama Pengantin
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `italic ${canvasElement.width * 0.065}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
     ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.55));
     
-    // Teks Subcaption Tanggal Pernikahan
+    // Tanggal
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.020}px sans-serif`;
     ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.14));
 
-    // Inject Hasil Pemrosesan ke Tag Preview Image Elemen secara Instan
+    // Inject ke Tag Preview secara Instan & Tampilkan Bersih
     setTimeout(() => {
         const dataUrl = canvasElement.toDataURL('image/png');
         previewImage.src = dataUrl;
@@ -519,14 +513,13 @@ function resetBooth() {
         photoPreviewContainer.style.setProperty('display', 'none', 'important');
     }
 
-    if (frameUI) frameUI.classList.remove('hidden');
-    if (frameCardInner) frameCardInner.classList.remove('hidden');
-
+    // Pastikan UI Live Kamera bersih saat dibuka kembali
     document.getElementById('webcam-container').classList.remove('hidden');
     document.getElementById('webcam-container').style.setProperty('display', 'block', 'important');
     webcamElement.classList.remove('hidden'); 
     webcamElement.style.setProperty('display', 'block', 'important');
-    
+    frameUI.classList.remove('hidden');
+
     canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); 
     afterCaptureBtn.classList.add('hidden');
