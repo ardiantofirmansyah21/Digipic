@@ -1,22 +1,20 @@
 // ==========================================
-// KONFIGURASI DATABASE SUPABASE REAL-TIME
+// KONFIGURASI DATABASE SUPABASE
 // ==========================================
 const SUPABASE_URL = "https://fehdsbsdjcyifefsqnzm.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ugGoNz1zo28WdTvb7iI64Q_9lw5-dd1";
 
 let supabase = null;
 
-// Inisialisasi Supabase Client yang aman dan kompatibel dengan CDN
+// Inisialisasi Supabase Client dengan aman tanpa merusak UI web utama
 try {
-    if (typeof Supabase !== 'undefined') {
-        supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } else if (typeof window.supabase !== 'undefined') {
+    if (typeof supabase === 'undefined' && typeof window.supabase !== 'undefined') {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } else {
-        console.warn("Pustaka Supabase tidak terdeteksi. Berjalan dalam mode local fallback.");
+    } else if (typeof Supabase !== 'undefined') {
+        supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 } catch (error) {
-    console.error("Gagal menginisialisasi Supabase:", error);
+    console.warn("Supabase SDK belum siap. Berjalan dalam mode Local Fallback.", error);
 }
 
 // Pengikatan Elemen DOM Utama
@@ -95,8 +93,10 @@ let uploadedImageElement = null;
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
 
-// Tempat penyimpanan data lokal untuk galeri
-let galleryData = [];
+let galleryData = [
+    { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
+    { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
+];
 let activeSelectedId = null;
 
 // EVENT LISTENERS MANAGEMENT
@@ -520,9 +520,12 @@ function renderGallery() {
     });
 }
 
-// AMBIL DATA DARI DATABASE SUPABASE (TABEL: Digipic)
+// AMBIL DATA DARI DATABASE (TABEL: Digipic)
 async function fetchGalleryFromSupabase() {
-    if (!supabase) return;
+    if (!supabase) {
+        renderGallery();
+        return;
+    }
     try {
         const { data, error } = await supabase
             .from('Digipic')
@@ -531,21 +534,22 @@ async function fetchGalleryFromSupabase() {
 
         if (error) throw error;
 
-        if (data) {
+        if (data && data.length > 0) {
             galleryData = data.map(item => ({
                 id: item.id,
                 photoUrl: item.photo_url,
                 audioUrl: item.audio_url,
                 label: item.label
             }));
-            renderGallery();
         }
+        renderGallery();
     } catch (err) {
         console.error("Gagal mengambil data dari tabel Digipic:", err.message);
+        renderGallery(); // Fallback ke data lokal jika ada isu tabel
     }
 }
 
-// KIRIM DATA KE DATABASE SUPABASE (STORAGE BUCKET & TABEL: Digipic)
+// UPLOAD DATA KE DATABASE (STORAGE BUCKET & TABEL: Digipic)
 if (uploadWeddingBtn) {
     uploadWeddingBtn.addEventListener('click', async () => {
         const namaTamu = guestNameInput.value.trim();
@@ -561,7 +565,6 @@ if (uploadWeddingBtn) {
         const uniqueId = "photo-" + Date.now();
         const labelNama = `✨ Oleh: ${namaTamu}`;
 
-        // Fallback jika koneksi internet terputus atau client database gagal dimuat
         if (!supabase) {
             let localPhotoUrl = canvasElement.toDataURL('image/png');
             let localAudioUrl = currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null;
@@ -582,7 +585,6 @@ if (uploadWeddingBtn) {
             let finalPhotoUrl = "";
             let finalAudioUrl = null;
 
-            // 1. Upload file foto ke Storage Bucket (wedding-assets)
             if (currentPhotoBlob) {
                 const photoFileName = `${uniqueId}.png`;
                 const { data: photoUpload, error: photoError } = await supabase.storage
@@ -598,7 +600,6 @@ if (uploadWeddingBtn) {
                 finalPhotoUrl = publicPhotoData.publicUrl;
             }
 
-            // 2. Upload file audio ke Storage Bucket jika ada perekaman suara
             if (currentAudioBlob) {
                 const audioFileName = `${uniqueId}.mp3`;
                 const { data: audioUpload, error: audioError } = await supabase.storage
@@ -614,7 +615,6 @@ if (uploadWeddingBtn) {
                 finalAudioUrl = publicAudioData.publicUrl;
             }
 
-            // 3. Memasukkan tautan URL file data ke tabel Digipic
             const { error: insertError } = await supabase
                 .from('Digipic')
                 .insert([
