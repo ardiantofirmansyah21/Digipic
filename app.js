@@ -1,109 +1,532 @@
 // ==========================================
-// 1. DEKLARASI VARIABEL & ELEMEN DOM
+// 1. PENGIKATAN ELEMEN DOM UTAMA
 // ==========================================
 const startBoothBtn = document.getElementById('startBoothBtn');
-const galleryGrid = document.getElementById('galleryGrid');
+const boothSection = document.getElementById('booth-section');
+const webcamElement = document.getElementById('webcam');
+const canvasElement = document.getElementById('photoCanvas');
+const captureBtn = document.getElementById('captureBtn');
+const afterCaptureBtn = document.getElementById('afterCaptureBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const shareBtn = document.getElementById('shareBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
+// FIX ID: Diselaraskan dengan ID di index.html yaitu 'weddingGalleryGrid'
+const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
 
-// Elemen Modal Galeri
+const recordBtn = document.getElementById('recordBtn');
+const recordStatus = document.getElementById('recordStatus');
+const audioPlayback = document.getElementById('audioPlayback');
+let mediaRecorder;
+let audioChunks = [];
+let currentAudioBlob = null;
+let currentPhotoBlob = null;
+
 const galleryModal = document.getElementById('galleryModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
 const modalImg = document.getElementById('modalImg');
 const modalAudio = document.getElementById('modalAudio');
 const noAudioTxt = document.getElementById('noAudioTxt');
 const modalShareBtn = document.getElementById('modalShareBtn');
+const modalDownloadBtn = document.getElementById('modalDownloadBtn');
 const modalDeleteBtn = document.getElementById('modalDeleteBtn');
-const closeModalBtn = document.getElementById('closeModalBtn');
 
-// State Aplikasi
+const countdownOverlay = document.getElementById('countdownOverlay');
+const countdownText = document.getElementById('countdownText');
+const frameUI = document.getElementById('frameUI');
+const frameCardInner = document.getElementById('frameCardInner');
+const decorTop = document.getElementById('decorTop');
+const decorBottom = document.getElementById('decorBottom');
+const weddingTitle = document.getElementById('weddingTitle');
+const weddingDate = document.getElementById('weddingDate');
+const preCaptureAction = document.getElementById('preCaptureAction');
+const frameSelector = document.getElementById('frameSelector');
+const filterSelector = document.getElementById('filterSelector');
+const timerSelector = document.getElementById('timerSelector');
+const timerOnBtn = document.getElementById('timerOnBtn');
+const timerOffBtn = document.getElementById('timerOffBtn');
+const switchCameraBtn = document.getElementById('switchCameraBtn');
+const closeBoothBtn = document.getElementById('closeBoothBtn');
+
+const openSettingsBtn = document.getElementById('openSettingsBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+
+const triggerUploadModalBtn = document.getElementById('triggerUploadModalBtn');
+const nameInputModal = document.getElementById('nameInputModal');
+const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+const guestNameInput = document.getElementById('guestNameInput');
+
+const flashEffect = document.getElementById('flashEffect');
+const successToast = document.getElementById('successToast');
+
+const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
+const galleryInput = document.getElementById('galleryInput');
+
+// ==========================================
+// 2. STATE GLOBAL KONTROL APLIKASI
+// ==========================================
+let selectedFrameStyle = 'dark'; 
+let selectedFilter = 'normal';
+let useTimer = true; 
+let currentFacingMode = 'user'; 
+let currentStream = null;
+let uploadedImageElement = null; 
+
+let loadedWeddingAsset = new Image();
+loadedWeddingAsset.src = "pengantin.png"; 
+
+let galleryData = [
+    { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
+    { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
+];
 let activeSelectedId = null;
 
-// Data Awal Galeri (Dummy/Contoh Foto Bawaan)
-let galleryData = [
-    {
-        id: "sample-1",
-        photoUrl: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=600&auto=format&fit=crop",
-        audioUrl: "", // Tidak ada rekaman suara
-        label: "Momen Bahagia Sabrina & Raka",
-        rawPhotoBlob: null
-    },
-    {
-        id: "sample-2",
-        photoUrl: "https://images.unsplash.com/photo-1519225495810-7512c696505a?q=80&w=600&auto=format&fit=crop",
-        audioUrl: "", 
-        label: "Senyuman Hangat di Hari Pernikahan",
-        rawPhotoBlob: null
-    }
-];
+// ==========================================
+// 3. KONTROL INTERFACE & MODAL EVENT LISTENERS
+// ==========================================
+openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-// ==========================================
-// 2. FUNGSI UTAMA: TRIGGER SHARE (WEB SHARE API)
-// ==========================================
-/**
- * Fungsi global untuk membagikan file Blob gambar ke aplikasi pihak ketiga (WhatsApp, IG, dll)
- * @param {Blob} blobData - Data mentah gambar
- */
-async function triggerShare(blobData) {
-    if (!blobData) return;
-    
-    const file = new File([blobData], "photobooth_moment.png", { type: "image/png" });
-    
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: 'Photobooth Sabrina & Raka',
-                text: 'Lihat keseruan momen kami di pernikahan Sabrina & Raka! ✨'
-            });
-        } catch (err) {
-            console.log("Pengguna membatalkan pembagian atau terjadi kesalahan:", err);
-        }
+triggerUploadModalBtn.addEventListener('click', () => {
+    nameInputModal.classList.remove('hidden');
+    guestNameInput.focus();
+});
+cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
+
+closeBoothBtn.addEventListener('click', () => {
+    stopWebcamStream();
+    settingsModal.classList.add('hidden');
+    boothSection.classList.add('hidden');
+    resetBooth();
+});
+
+function stopWebcamStream() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+}
+
+switchCameraBtn.addEventListener('click', () => {
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+    if (currentFacingMode === 'user') {
+        webcamElement.classList.add('transform', '-scale-x-100');
     } else {
-        alert("Browser atau perangkat Anda tidak mendukung fitur berbagi file langsung. Silakan simpan gambar secara manual.");
+        webcamElement.classList.remove('transform', '-scale-x-100');
+    }
+    startWebcam();
+});
+
+startBoothBtn.addEventListener('click', () => {
+    boothSection.classList.remove('hidden');
+    startWebcam();
+});
+
+triggerGalleryBtn.addEventListener('click', () => {
+    galleryInput.click();
+});
+
+galleryInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        stopWebcamStream(); 
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            uploadedImageElement = new Image();
+            uploadedImageElement.onload = function() {
+                preCaptureAction.classList.add('hidden'); 
+                switchCameraBtn.classList.add('hidden');
+                closeBoothBtn.classList.add('hidden'); 
+                settingsModal.classList.add('hidden');
+                captureImage(true); 
+            };
+            uploadedImageElement.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+async function startWebcam() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+    uploadedImageElement = null; 
+    try {
+        const constraints = {
+            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+        };
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcamElement.srcObject = currentStream;
+        
+        webcamElement.onloadedmetadata = () => {
+            webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
+        };
+    } catch (err) {
+        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
     }
 }
 
 // ==========================================
-// 3. FUNGSI UTAMA: RENDER DATA KE GRID GALERI
+// 4. FITUR PENGATURAN FRAME, FILTER & TIMER
+// ==========================================
+window.setTimerOption = function(status) {
+    useTimer = status;
+    if (useTimer) {
+        timerOnBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
+        timerOffBtn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-lg font-medium text-stone-300";
+    } else {
+        timerOnBtn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-lg font-medium text-stone-300";
+        timerOffBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
+    }
+};
+
+window.changeFilter = function(filterType) {
+    selectedFilter = filterType;
+    const buttons = filterSelector.getElementsByTagName('button');
+    for (let btn of buttons) {
+        btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-1.5 rounded-lg font-medium text-stone-300";
+    }
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    webcamElement.className = `w-full h-full object-cover ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
+};
+
+window.changeFrameStyle = function(style) {
+    selectedFrameStyle = style;
+    const buttons = frameSelector.getElementsByTagName('button');
+    for (let btn of buttons) {
+        btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-xl font-medium text-stone-300";
+    }
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
+
+    if (style === 'dark') {
+        frameUI.style.borderColor = '#1c1917';
+        decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
+        decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
+        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
+    } else if (style === 'classic') {
+        frameUI.style.borderColor = '#ffffff';
+        decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
+        decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
+        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
+    } else if (style === 'romantic') {
+        frameUI.style.borderColor = '#ffe4e6';
+        decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
+        decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
+        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
+    }
+};
+
+// ==========================================
+// 5. PROSES PENGAMBILAN & PENGOLAHAN GAMBAR
+// ==========================================
+captureBtn.addEventListener('click', () => {
+    preCaptureAction.classList.add('hidden'); 
+    switchCameraBtn.classList.add('hidden');
+    closeBoothBtn.classList.add('hidden'); 
+    settingsModal.classList.add('hidden');
+    
+    if (useTimer) {
+        countdownOverlay.classList.remove('hidden');
+        let count = 3;
+        countdownText.innerText = count;
+        
+        let timer = setInterval(() => { 
+            count--; 
+            if (count > 0) { 
+                countdownText.innerText = count; 
+            } else { 
+                clearInterval(timer); 
+                countdownOverlay.classList.add('hidden'); 
+                triggerFlashAndCapture(); 
+            } 
+        }, 1000);
+    } else {
+        triggerFlashAndCapture();
+    }
+});
+
+function triggerFlashAndCapture() {
+    flashEffect.classList.remove('hidden');
+    flashEffect.style.opacity = '1';
+    
+    setTimeout(() => {
+        flashEffect.style.opacity = '0';
+        setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
+        captureImage(false); 
+    }, 400);
+}
+
+function captureImage(isUploadedMode = false) {
+    const ctx = canvasElement.getContext('2d');
+    
+    if (isUploadedMode && uploadedImageElement) {
+        const maxDimension = 1280;
+        let targetWidth = uploadedImageElement.width;
+        let targetHeight = uploadedImageElement.height;
+        
+        if (targetWidth > maxDimension || targetHeight > maxDimension) {
+            if (targetWidth > targetHeight) {
+                targetHeight = (maxDimension / targetWidth) * targetHeight;
+                targetWidth = maxDimension;
+            } else {
+                targetWidth = (maxDimension / targetHeight) * targetWidth;
+                targetHeight = maxDimension;
+            }
+        }
+        
+        canvasElement.width = targetWidth;
+        canvasElement.height = targetHeight;
+        ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
+    } else {
+        canvasElement.width = webcamElement.videoWidth || 640;
+        canvasElement.height = webcamElement.videoHeight || 480;
+        if (currentFacingMode === 'user') {
+            ctx.translate(canvasElement.width, 0);
+            ctx.scale(-1, 1);
+        }
+        ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    
+    if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
+        const blurCanvas = document.createElement('canvas');
+        blurCanvas.width = canvasElement.width;
+        blurCanvas.height = canvasElement.height;
+        const blurCtx = blurCanvas.getContext('2d');
+        blurCtx.drawImage(canvasElement, 0, 0);
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'soft-light'; 
+        ctx.globalAlpha = 0.25; 
+        ctx.filter = 'blur(2px)'; 
+        ctx.drawImage(blurCanvas, 0, 0);
+        ctx.restore();
+    }
+
+    const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+    const data = imgData.data;
+    
+    if (selectedFilter === 'glowing') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15 + 10);
+            data[i+1] = Math.min(255, data[i+1] * 1.12 + 10);
+            data[i+2] = Math.min(255, data[i+2] * 1.08 + 5);
+        }
+    } else if (selectedFilter === 'flawless') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, r * 1.18 + 12);
+            data[i+1] = Math.min(255, g * 1.08 + 5);
+            data[i+2] = Math.min(255, b * 1.12 + 8);
+        }
+    } else if (selectedFilter === 'warm') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.9;
+        }
+    } else if (selectedFilter === 'bw') {
+        for (let i = 0; i < data.length; i += 4) {
+            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
+            data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
+        }
+    } else if (selectedFilter === 'vintage') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
+            data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
+            data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
+    let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
+    let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
+    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
+
+    const borderWidth = canvasElement.width * 0.04;
+    ctx.lineWidth = borderWidth;
+    ctx.strokeStyle = borderColors[selectedFrameStyle];
+    ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
+
+    const boxHeight = canvasElement.height * 0.16;
+    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
+    const boxX = borderWidth + (canvasElement.width * 0.08);
+    const boxWidth = canvasElement.width - (boxX * 2);
+
+    const assetSize = canvasElement.width * 0.26;
+    const assetX = (canvasElement.width / 2) - (assetSize / 2);
+    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+
+    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
+        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
+    }
+
+    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    let decorSet = {
+        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
+    };
+    let currentDecor = decorSet[selectedFrameStyle];
+
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `${canvasElement.width * 0.035}px Arial`;
+    ctx.textAlign = 'left';
+    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'right';
+    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'center';
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
+
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+    ctx.textAlign = 'center';
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+    
+    ctx.fillStyle = subTextColors[selectedFrameStyle];
+    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+
+    canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+
+    webcamElement.classList.add('hidden');
+    canvasElement.classList.remove('hidden');
+    afterCaptureBtn.classList.remove('hidden');
+    
+    initAudioRecorder();
+}
+
+// ==========================================
+// 6. LOGIKA PEREKAMAN AUDIO / SUARA TAMU
+// ==========================================
+async function initAudioRecorder() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = (event) => { audioChunks.push(event.data); };
+        mediaRecorder.onstop = () => {
+            currentAudioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            audioPlayback.src = URL.createObjectURL(currentAudioBlob);
+            audioPlayback.classList.remove('hidden');
+        };
+    } catch (err) {
+        console.log("Pemberian izin akses mikrofon ditolak atau tidak tersedia.");
+    }
+}
+
+recordBtn.addEventListener('click', () => {
+    if (!mediaRecorder) return alert("Perangkat mikrofon belum siap.");
+    if (mediaRecorder.state === "inactive") {
+        audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
+    } else {
+        mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
+    }
+});
+
+// ==========================================
+// 7. FUNGSI UTAMA: TRIGGER SHARE & DOWNLOAD
+// ==========================================
+async function triggerShare(blobFile) {
+    if (!blobFile) return;
+    const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { 
+        try {
+            await navigator.share({ files: [file], title: "Photobooth Sabrina & Raka" }); 
+        } catch(e) { console.log("Batal membagikan."); }
+    } else {
+        alert("Browser tidak mendukung fitur bagikan file langsung.");
+    }
+}
+
+function triggerDownload(blobFile) {
+    if (!blobFile) return;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
+}
+
+shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
+downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
+
+modalDownloadBtn.addEventListener('click', () => {
+    const item = galleryData.find(p => p.id === activeSelectedId);
+    if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
+    else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+});
+
+// ==========================================
+// 8. MANAJEMEN RENDER GALERI KEBAHAGIAAN
 // ==========================================
 function renderGallery() {
-    // Kosongkan grid terlebih dahulu
-    galleryGrid.innerHTML = "";
+    weddingGalleryGrid.innerHTML = "";
     
     if (galleryData.length === 0) {
-        galleryGrid.innerHTML = `
-            <div class="col-span-2 sm:col-span-3 text-center py-10 text-stone-400 text-sm">
-                Belum ada foto di galeri. Jadilah yang pertama mengabadikan momen!
-            </div>
-        `;
+        weddingGalleryGrid.innerHTML = `<div class="col-span-2 text-center py-6 text-stone-400 text-xs">Belum ada foto.</div>`;
         return;
     }
 
-    // Buat elemen card foto satu per satu
     galleryData.forEach(item => {
         const card = document.createElement('div');
-        card.className = "group relative aspect-square bg-stone-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-stone-200/60 transform active:scale-98";
-        
-        // Indikator jika foto memiliki rekaman suara
-        const audioIndicator = item.audioUrl 
-            ? `<div class="absolute top-2 right-2 bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-medium shadow">🎵 Bersuara</div>` 
-            : '';
-
-        card.innerHTML = `
-            <img src="${item.photoUrl}" alt="Momen Galeri" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                <p class="text-white text-xs truncate w-full font-medium">Lihat Momen ➔</p>
-            </div>
-            ${audioIndicator}
-        `;
-        
-        // Ketika kartu foto diklik, buka jendela detail modal
+        card.className = "bg-white p-2.5 rounded-xl shadow border border-stone-200/60 cursor-pointer transform hover:scale-[1.02] transition-all";
         card.addEventListener('click', () => openGalleryModal(item.id));
-        
-        galleryGrid.appendChild(card);
+        card.innerHTML = `
+            <div class='overflow-hidden rounded-lg aspect-[3/4]'>
+                <img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'>
+            </div>
+            <p class='text-[9px] font-medium text-stone-500 text-center mt-2 truncate px-1'>${item.label}</p>
+        `;
+        weddingGalleryGrid.appendChild(card);
     });
 }
 
+// Action Kirim ke Galeri Pengantin
+uploadWeddingBtn.addEventListener('click', () => {
+    const namaTamu = guestNameInput.value.trim();
+    if (namaTamu === "") {
+        alert("Nama tidak boleh kosong!");
+        guestNameInput.focus();
+        return;
+    }
+
+    uploadWeddingBtn.innerText = "Mengirim..."; 
+    uploadWeddingBtn.disabled = true;
+
+    setTimeout(() => {
+        const uniqueId = "photo-" + Date.now();
+        const labelNama = `✨ Oleh: ${namaTamu}`;
+        
+        galleryData.unshift({ 
+            id: uniqueId, 
+            photoUrl: URL.createObjectURL(currentPhotoBlob), 
+            audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
+            label: labelNama, 
+            rawPhotoBlob: currentPhotoBlob 
+        });
+        
+        nameInputModal.classList.add('hidden');
+        boothSection.classList.add('hidden'); 
+        
+        successToast.classList.remove('hidden');
+        setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
+
+        renderGallery(); 
+        resetBooth();
+        
+        document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
+});
+
 // ==========================================
-// 4. LOGIKA MODAL DETAIL & FIX TOMBOL SHARE
+// 9. LOGIKA MODAL POPUP DETAIL GALERI
 // ==========================================
 function openGalleryModal(id) {
     const item = galleryData.find(p => p.id === id); 
@@ -112,7 +535,6 @@ function openGalleryModal(id) {
     activeSelectedId = id; 
     modalImg.src = item.photoUrl;
     
-    // Cek ketersediaan file audio pendukung
     if (item.audioUrl) { 
         modalAudio.src = item.audioUrl; 
         modalAudio.classList.remove('hidden'); 
@@ -122,74 +544,64 @@ function openGalleryModal(id) {
         modalAudio.classList.add('hidden'); 
         noAudioTxt.classList.remove('hidden'); 
     }
-    
     galleryModal.classList.remove('hidden');
 }
 
-// FIX BUG: Event Listener Tombol Bagikan di Dalam Modal Galeri
+// Event Listener Share didalam modal menggunakan Web Share API / raw file download fallback
 modalShareBtn.addEventListener('click', async () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
     if (!item) return;
 
-    try {
-        // Kasus A: Jika foto hasil jepretan baru (punya data mentah rawPhotoBlob)
-        if (item.rawPhotoBlob) {
-            triggerShare(item.rawPhotoBlob);
-        } 
-        // Kasus B: Jika foto dummy/bawaan lama yang berbentuk URL link HTTP internet
-        else if (item.photoUrl.startsWith('http')) {
+    if (item.rawPhotoBlob) {
+        triggerShare(item.rawPhotoBlob);
+    } else {
+        try {
             modalShareBtn.innerText = "Memuat...";
-            
-            // Mengubah URL gambar menjadi data Blob mentah agar bisa di-share lewat API perangkat
-            const response = await fetch(item.photoUrl);
-            const blob = await response.blob();
+            const res = await fetch(item.photoUrl);
+            const blob = await res.blob();
             modalShareBtn.innerText = "Bagikan";
-            
-            const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
-            
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Galeri Kebahagiaan Sabrina & Raka',
-                    text: item.label || 'Momen indah dari pernikahan Sabrina & Raka!'
-                });
-            } else {
-                alert("Fitur bagikan file langsung tidak didukung di browser ini. Sila unduh gambar secara manual.");
-            }
+            triggerShare(blob);
+        } catch(e) {
+            modalShareBtn.innerText = "Bagikan";
+            alert("Tidak dapat membagikan gambar eksternal langsung. Silakan simpan terlebih dahulu.");
         }
-    } catch (err) {
-        console.error("Gagal memproses pembagian data:", err);
-        modalShareBtn.innerText = "Bagikan";
     }
 });
 
-// Aksi Tutup Jendela Modal
 closeModalBtn.addEventListener('click', () => { 
     galleryModal.classList.add('hidden'); 
-    modalAudio.pause(); // Hentikan audio agar suara tidak bocor saat modal ditutup
+    modalAudio.pause(); 
 });
 
-// Aksi Hapus Item dari Array Galeri
 modalDeleteBtn.addEventListener('click', () => { 
     if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
         galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
-        renderGallery(); // Render ulang susunan grid
+        renderGallery(); 
         galleryModal.classList.add('hidden'); 
     } 
 });
 
 // ==========================================
-// 5. INISIALISASI AWAL JALANNYA APLIKASI
+// 10. RESET BOOTH & INISIALISASI
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Render data bawaan saat web pertama kali dimuat
-    renderGallery();
-    
-    // Logika tombol utama navigasi ke seksi photobooth
-    if (startBoothBtn) {
-        startBoothBtn.addEventListener('click', () => {
-            alert("Sistem Kamera Booth Diaktifkan! Hubungkan modul interface hardware kamera Anda di bagian ini.");
-            // Tempatkan logika trigger buka kamera/halaman photobooth Anda di bawah sini
-        });
-    }
+function resetBooth() {
+    audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
+    recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
+    uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
+    guestNameInput.value = "";
+    galleryInput.value = ""; 
+    uploadedImageElement = null;
+    webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
+    preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    switchCameraBtn.classList.remove('hidden');
+    closeBoothBtn.classList.remove('hidden'); 
+}
+
+retakeBtn.addEventListener('click', () => {
+    resetBooth();
+    startWebcam(); 
+});
+
+document.addEventListener('DOMContentLoaded', () => { 
+    renderGallery(); 
 });
