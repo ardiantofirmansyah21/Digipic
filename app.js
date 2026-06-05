@@ -1,22 +1,3 @@
-// ==========================================
-// KONFIGURASI DATABASE SUPABASE
-// ==========================================
-const SUPABASE_URL = "https://fehdsbsdjcyifefsqnzm.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_ugGoNz1zo28WdTvb7iI64Q_9lw5-dd1";
-
-let supabase = null;
-
-// Inisialisasi Supabase Client dengan aman tanpa merusak UI web utama
-try {
-    if (typeof supabase === 'undefined' && typeof window.supabase !== 'undefined') {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } else if (typeof Supabase !== 'undefined') {
-        supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-} catch (error) {
-    console.warn("Supabase SDK belum siap. Berjalan dalam mode Local Fallback.", error);
-}
-
 // Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
@@ -42,6 +23,7 @@ let mediaRecorder;
 let audioChunks = [];
 let currentAudioBlob = null;
 let currentPhotoBlob = null;
+let audioStream = null;
 
 const galleryModal = document.getElementById('galleryModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -92,6 +74,9 @@ let uploadedImageElement = null;
 
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
+loadedWeddingAsset.onerror = function() {
+    console.warn("File 'pengantin.png' tidak dapat dimuat di server GitHub Pages.");
+};
 
 let galleryData = [
     { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
@@ -99,7 +84,6 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
-// EVENT LISTENERS MANAGEMENT
 if (openSettingsBtn) openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
@@ -124,6 +108,10 @@ function stopWebcamStream() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
+    }
+    if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
     }
 }
 
@@ -182,20 +170,24 @@ async function startWebcam() {
     uploadedImageElement = null;
     try {
         const constraints = {
-            video: { facingMode: currentFacingMode, width: { ideal: 1024 }, height: { ideal: 768 } },
+            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
             audio: false
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
         webcamElement.onloadedmetadata = () => {
-            webcamElement.play().catch(e => console.log("Autoplay diblokir:", e));
+            let playPromise = webcamElement.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => console.log("Autoplay ditunda oleh kebijakan browser:", e));
+            }
         };
     } catch (err) {
-        alert("Gagal mengakses kamera. Pastikan izin kamera telah diberikan.");
+        console.error(err);
+        alert("Gagal memuat kamera. Pastikan Anda telah memberikan izin akses kamera.");
     }
 }
 
-window.setTimerOption = function(status) {
+window.setTimerOption = function(status, evt) {
     useTimer = status;
     if (useTimer) {
         timerOnBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
@@ -206,26 +198,26 @@ window.setTimerOption = function(status) {
     }
 };
 
-window.changeFilter = function(filterType) {
+window.changeFilter = function(filterType, evt) {
     selectedFilter = filterType;
     const buttons = filterSelector.getElementsByTagName('button');
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-1.5 rounded-lg font-medium text-stone-300";
     }
-    if (event && event.currentTarget) {
-        event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
     }
     webcamElement.className = `w-full h-full object-contain ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
 };
 
-window.changeFrameStyle = function(style) {
+window.changeFrameStyle = function(style, evt) {
     selectedFrameStyle = style;
     const buttons = frameSelector.getElementsByTagName('button');
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-xl font-medium text-stone-300";
     }
-    if (event && event.currentTarget) {
-        event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
     }
 
     if (style === 'dark') {
@@ -285,188 +277,208 @@ function captureImage(isUploadedMode = false) {
     canvasElement.width = 768;
     canvasElement.height = 1024;
 
-    if (isUploadedMode && uploadedImageElement) {
-        let targetWidth = uploadedImageElement.width;
-        let targetHeight = uploadedImageElement.height;
-        let imgRatio = targetWidth / targetHeight;
-        let canvasRatio = canvasElement.width / canvasElement.height;
-        let drawWidth, drawHeight, drawX, drawY;
+    try {
+        if (isUploadedMode && uploadedImageElement) {
+            let targetWidth = uploadedImageElement.width;
+            let targetHeight = uploadedImageElement.height;
+            let imgRatio = targetWidth / targetHeight;
+            let canvasRatio = canvasElement.width / canvasElement.height;
+            let drawWidth, drawHeight, drawX, drawY;
 
-        if (imgRatio > canvasRatio) {
-            drawHeight = canvasElement.height;
-            drawWidth = canvasElement.height * imgRatio;
-            drawX = (canvasElement.width - drawWidth) / 2;
-            drawY = 0;
+            if (imgRatio > canvasRatio) {
+                drawHeight = canvasElement.height;
+                drawWidth = canvasElement.height * imgRatio;
+                drawX = (canvasElement.width - drawWidth) / 2;
+                drawY = 0;
+            } else {
+                drawWidth = canvasElement.width;
+                drawHeight = canvasElement.width / imgRatio;
+                drawX = 0;
+                drawY = (canvasElement.height - drawHeight) / 2;
+            }
+            ctx.drawImage(uploadedImageElement, drawX, drawY, drawWidth, drawHeight);
         } else {
-            drawWidth = canvasElement.width;
-            drawHeight = canvasElement.width / imgRatio;
-            drawX = 0;
-            drawY = (canvasElement.height - drawHeight) / 2;
-        }
-        ctx.drawImage(uploadedImageElement, drawX, drawY, drawWidth, drawHeight);
-    } else {
-        ctx.save();
-        if (currentFacingMode === 'user') {
-            ctx.translate(canvasElement.width, 0);
-            ctx.scale(-1, 1);
+            ctx.save();
+            if (currentFacingMode === 'user') {
+                ctx.translate(canvasElement.width, 0);
+                ctx.scale(-1, 1);
+            }
+            
+            let videoWidth = webcamElement.videoWidth || 640;
+            let videoHeight = webcamElement.videoHeight || 480;
+            let videoRatio = videoWidth / videoHeight;
+            let targetRatio = canvasElement.width / canvasElement.height;
+            let sx, sy, sWidth, sHeight;
+
+            if (videoRatio > targetRatio) {
+                sHeight = videoHeight;
+                sWidth = videoHeight * targetRatio;
+                sx = (videoWidth - sWidth) / 2;
+                sy = 0;
+            } else {
+                sWidth = videoWidth;
+                sHeight = videoWidth / targetRatio;
+                sx = 0;
+                sy = (videoHeight - sHeight) / 2;
+            }
+
+            ctx.drawImage(webcamElement, sx, sy, sWidth, sHeight, 0, 0, canvasElement.width, canvasElement.height);
+            ctx.restore();
         }
         
-        let videoWidth = webcamElement.videoWidth || 640;
-        let videoHeight = webcamElement.videoHeight || 480;
-        let videoRatio = videoWidth / videoHeight;
-        let targetRatio = canvasElement.width / canvasElement.height;
-        let sx, sy, sWidth, sHeight;
-
-        if (videoRatio > targetRatio) {
-            sHeight = videoHeight;
-            sWidth = videoHeight * targetRatio;
-            sx = (videoWidth - sWidth) / 2;
-            sy = 0;
-        } else {
-            sWidth = videoWidth;
-            sHeight = videoWidth / targetRatio;
-            sx = 0;
-            sy = (videoHeight - sHeight) / 2;
+        if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
+            const blurCanvas = document.createElement('canvas');
+            blurCanvas.width = canvasElement.width;
+            blurCanvas.height = canvasElement.height;
+            const blurCtx = blurCanvas.getContext('2d');
+            blurCtx.drawImage(canvasElement, 0, 0);
+            ctx.save();
+            ctx.globalCompositeOperation = 'soft-light'; 
+            ctx.globalAlpha = 0.3; 
+            ctx.filter = 'blur(3px)'; 
+            ctx.drawImage(blurCanvas, 0, 0);
+            ctx.restore();
         }
 
-        ctx.drawImage(webcamElement, sx, sy, sWidth, sHeight, 0, 0, canvasElement.width, canvasElement.height);
-        ctx.restore();
-    }
-    
-    if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
-        const blurCanvas = document.createElement('canvas');
-        blurCanvas.width = canvasElement.width;
-        blurCanvas.height = canvasElement.height;
-        const blurCtx = blurCanvas.getContext('2d');
-        blurCtx.drawImage(canvasElement, 0, 0);
-        ctx.save();
-        ctx.globalCompositeOperation = 'soft-light'; 
-        ctx.globalAlpha = 0.3; 
-        ctx.filter = 'blur(3px)'; 
-        ctx.drawImage(blurCanvas, 0, 0);
-        ctx.restore();
-    }
-
-    const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
-    const data = imgData.data;
-    
-    if (selectedFilter === 'glowing') {
-        for (let i = 0; i < data.length; i += 4) {
-            data[i] = Math.min(255, data[i] * 1.12 + 12);
-            data[i+1] = Math.min(255, data[i+1] * 1.10 + 10);
-            data[i+2] = Math.min(255, data[i+2] * 1.05 + 5);
-        }
-    } else if (selectedFilter === 'flawless') {
-        for (let i = 0; i < data.length; i += 4) {
-            data[i] = Math.min(255, data[i] * 1.15 + 10);
-            data[i+1] = Math.min(255, data[i+1] * 1.06 + 5);
-            data[i+2] = Math.min(255, data[i+2] * 1.10 + 6);
-        }
-    } else if (selectedFilter === 'warm') {
-        for (let i = 0; i < data.length; i += 4) {
-            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.88;
-        }
-    } else if (selectedFilter === 'bw') {
-        for (let i = 0; i < data.length; i += 4) {
-            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
-            data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
-        }
-    } else if (selectedFilter === 'vintage') {
-        for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i+1], b = data[i+2];
-            data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
-            data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
-            data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
-    let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
-    let subTextColors = { dark: '#d6d3d1', classic: '#57534e', romantic: '#9f1239' };
-    let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.65)', classic: 'rgba(255, 255, 255, 0.65)', romantic: 'rgba(255, 241, 242, 0.65)' };
-    let innerBorderColors = { dark: 'rgba(255,255,255,0.1)', classic: 'rgba(0,0,0,0.08)', romantic: 'rgba(255,255,255,0.2)' };
-
-    const borderWidth = canvasElement.width * 0.025; 
-    ctx.lineWidth = borderWidth;
-    ctx.strokeStyle = borderColors[selectedFrameStyle];
-    ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
-
-    const boxHeight = canvasElement.height * 0.11;
-    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.02);
-    const boxX = borderWidth + (canvasElement.width * 0.04);
-    const boxWidth = canvasElement.width - (boxX * 2);
-
-    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
-    ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
-    ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = innerBorderColors[selectedFrameStyle];
-    ctx.stroke();
-
-    const paddingBox = 12;
-    const assetHeight = boxHeight - (paddingBox * 2);
-    const assetWidth = assetHeight; 
-    const assetX = boxX + paddingBox + 4;
-    const assetY = boxY + paddingBox;
-
-    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
-        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetWidth, assetHeight);
-    }
-
-    const contentStartX = assetX + assetWidth + 16; 
-    let decorSet = {
-        dark: { bottom: "✨ 💕 ✨" },
-        classic: { bottom: "✨ 💕 ✨" },
-        romantic: { bottom: "🎈 ❤️ 🎈" }
-    };
-    let currentDecor = decorSet[selectedFrameStyle];
-
-    document.fonts.load(`italic ${canvasElement.width * 0.045}px 'Great Vibes'`).then(() => {
-        ctx.fillStyle = textColors[selectedFrameStyle];
-        ctx.font = `italic ${canvasElement.width * 0.045}px 'Great Vibes', cursive`; 
-        ctx.textAlign = 'left';
-        ctx.fillText("Sabrina & Raka", contentStartX, boxY + (boxHeight / 2.1));
+        const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+        const data = imgData.data;
         
-        ctx.fillStyle = subTextColors[selectedFrameStyle];
-        ctx.font = `bold ${canvasElement.width * 0.018}px sans-serif`;
-        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", contentStartX, boxY + (boxHeight / 1.4));
+        if (selectedFilter === 'glowing') {
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, data[i] * 1.12 + 12);
+                data[i+1] = Math.min(255, data[i+1] * 1.10 + 10);
+                data[i+2] = Math.min(255, data[i+2] * 1.05 + 5);
+            }
+        } else if (selectedFilter === 'flawless') {
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, data[i] * 1.15 + 10);
+                data[i+1] = Math.min(255, data[i+1] * 1.06 + 5);
+                data[i+2] = Math.min(255, data[i+2] * 1.10 + 6);
+            }
+        } else if (selectedFilter === 'warm') {
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.88;
+            }
+        } else if (selectedFilter === 'bw') {
+            for (let i = 0; i < data.length; i += 4) {
+                let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
+                data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
+            }
+        } else if (selectedFilter === 'vintage') {
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
+                data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
+                data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
 
-        ctx.fillStyle = textColors[selectedFrameStyle];
-        ctx.font = `${canvasElement.width * 0.022}px Arial`;
-        ctx.textAlign = 'right';
-        ctx.fillText(currentDecor.bottom, boxX + boxWidth - paddingBox, boxY + boxHeight / 1.7);
+        let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
+        let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
+        let subTextColors = { dark: '#d6d3d1', classic: '#57534e', romantic: '#9f1239' };
+        let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.65)', classic: 'rgba(255, 255, 255, 0.65)', romantic: 'rgba(255, 241, 242, 0.65)' };
+        let innerBorderColors = { dark: 'rgba(255,255,255,0.1)', classic: 'rgba(0,0,0,0.08)', romantic: 'rgba(255,255,255,0.2)' };
 
-        canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
-    });
+        const borderWidth = canvasElement.width * 0.025; 
+        ctx.lineWidth = borderWidth;
+        ctx.strokeStyle = borderColors[selectedFrameStyle];
+        ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    webcamElement.classList.add('hidden');
-    canvasContainer.classList.remove('hidden');
-    afterCaptureBtn.classList.remove('hidden');
+        const boxHeight = canvasElement.height * 0.11;
+        const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.02);
+        const boxX = borderWidth + (canvasElement.width * 0.04);
+        const boxWidth = canvasElement.width - (boxX * 2);
+
+        if (typeof ctx.roundRect === "function") {
+            ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        }
+        
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = innerBorderColors[selectedFrameStyle];
+        ctx.stroke();
+
+        const paddingBox = 12;
+        const assetHeight = boxHeight - (paddingBox * 2);
+        const assetWidth = assetHeight; 
+        const assetX = boxX + paddingBox + 4;
+        const assetY = boxY + paddingBox;
+
+        if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
+            ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetWidth, assetHeight);
+        }
+
+        const contentStartX = assetX + assetWidth + 16; 
+        let decorSet = {
+            dark: { bottom: "✨ 💕 ✨" },
+            classic: { bottom: "✨ 💕 ✨" },
+            romantic: { bottom: "🎈 ❤️ 🎈" }
+        };
+        let currentDecor = decorSet[selectedFrameStyle];
+
+        const executeDraw = () => {
+            ctx.fillStyle = textColors[selectedFrameStyle];
+            ctx.font = `italic ${canvasElement.width * 0.045}px 'Great Vibes', cursive, sans-serif`; 
+            ctx.textAlign = 'left';
+            ctx.fillText("Sabrina & Raka", contentStartX, boxY + (boxHeight / 2.1));
+            
+            ctx.fillStyle = subTextColors[selectedFrameStyle];
+            ctx.font = `bold ${canvasElement.width * 0.018}px sans-serif`;
+            ctx.fillText("29.05.2026 — HAPPY EVER AFTER", contentStartX, boxY + (boxHeight / 1.4));
+
+            ctx.fillStyle = textColors[selectedFrameStyle];
+            ctx.font = `${canvasElement.width * 0.022}px Arial`;
+            ctx.textAlign = 'right';
+            ctx.fillText(currentDecor.bottom, boxX + boxWidth - paddingBox, boxY + boxHeight / 1.7);
+
+            canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+        };
+
+        document.fonts.load(`italic ${canvasElement.width * 0.045}px 'Great Vibes'`)
+            .then(executeDraw)
+            .catch(() => {
+                console.warn("Gagal render google fonts. Fallback ke sistem font.");
+                executeDraw();
+            });
+
+    } catch (canvasErr) {
+        console.error("Proses pembuatan gambar canvas eror:", canvasErr);
+    }
+
+    if (webcamElement) webcamElement.classList.add('hidden');
+    if (canvasContainer) canvasContainer.classList.remove('hidden');
+    if (afterCaptureBtn) afterCaptureBtn.classList.remove('hidden');
     
     initAudioRecorder();
 }
 
 async function initAudioRecorder() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
         audioChunks = [];
         mediaRecorder.ondataavailable = (event) => { audioChunks.push(event.data); };
         mediaRecorder.onstop = () => {
             currentAudioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-            audioPlayback.src = URL.createObjectURL(currentAudioBlob);
-            audioPlayback.classList.remove('hidden');
+            if (audioPlayback) {
+                audioPlayback.src = URL.createObjectURL(currentAudioBlob);
+                audioPlayback.classList.remove('hidden');
+            }
         };
     } catch (err) {
-        console.log("Mikrofon dilewati atau tidak diizinkan.");
+        console.log("Akses rekaman suara dilewati.");
     }
 }
 
 if (recordBtn) {
     recordBtn.addEventListener('click', () => {
-        if (!mediaRecorder) return alert("Izin mikrofon diperlukan.");
+        if (!mediaRecorder) return alert("Mikrofon belum siap atau ditolak.");
         if (mediaRecorder.state === "inactive") {
             audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
         } else {
@@ -493,18 +505,24 @@ if (closeFullscreenBtn) {
 function triggerShare(blobFile) {
     if (!blobFile) return;
     const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }); }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { 
+        navigator.share({ files: [file] }).catch(e => console.log("Batal share:", e)); 
+    } else {
+        alert("Browser tidak mendukung share langsung. Silakan tekan tombol 'Simpan'.");
+    }
 }
 function triggerDownload(blobFile) {
     if (!blobFile) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
 }
+
 if (shareBtn) shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
 if (downloadBtn) downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
 if (modalDownloadBtn) {
     modalDownloadBtn.addEventListener('click', () => {
         const item = galleryData.find(p => p.id === activeSelectedId);
-        if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+        if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
+        else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
     });
 }
 
@@ -520,38 +538,8 @@ function renderGallery() {
     });
 }
 
-// AMBIL DATA DARI DATABASE (TABEL: Digipic)
-async function fetchGalleryFromSupabase() {
-    if (!supabase) {
-        renderGallery();
-        return;
-    }
-    try {
-        const { data, error } = await supabase
-            .from('Digipic')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            galleryData = data.map(item => ({
-                id: item.id,
-                photoUrl: item.photo_url,
-                audioUrl: item.audio_url,
-                label: item.label
-            }));
-        }
-        renderGallery();
-    } catch (err) {
-        console.error("Gagal mengambil data dari tabel Digipic:", err.message);
-        renderGallery(); // Fallback ke data lokal jika ada isu tabel
-    }
-}
-
-// UPLOAD DATA KE DATABASE (STORAGE BUCKET & TABEL: Digipic)
 if (uploadWeddingBtn) {
-    uploadWeddingBtn.addEventListener('click', async () => {
+    uploadWeddingBtn.addEventListener('click', () => {
         const namaTamu = guestNameInput.value.trim();
         if (namaTamu === "") {
             alert("Nama tidak boleh kosong!");
@@ -562,89 +550,30 @@ if (uploadWeddingBtn) {
         uploadWeddingBtn.innerText = "Mengirim..."; 
         uploadWeddingBtn.disabled = true;
 
-        const uniqueId = "photo-" + Date.now();
-        const labelNama = `✨ Oleh: ${namaTamu}`;
-
-        if (!supabase) {
-            let localPhotoUrl = canvasElement.toDataURL('image/png');
-            let localAudioUrl = currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null;
+        setTimeout(() => {
+            const uniqueId = "photo-" + Date.now();
+            const labelNama = `✨ Oleh: ${namaTamu}`;
             
-            galleryData.unshift({
-                id: uniqueId,
-                photoUrl: localPhotoUrl,
-                audioUrl: localAudioUrl,
-                label: labelNama
+            galleryData.unshift({ 
+                id: uniqueId, 
+                photoUrl: URL.createObjectURL(currentPhotoBlob), 
+                audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
+                label: labelNama, 
+                rawPhotoBlob: currentPhotoBlob 
             });
             
-            renderGallery();
-            finishUploadSuccess();
-            return;
-        }
+            nameInputModal.classList.add('hidden');
+            boothSection.classList.add('hidden'); 
+            
+            successToast.classList.remove('hidden');
+            setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
 
-        try {
-            let finalPhotoUrl = "";
-            let finalAudioUrl = null;
-
-            if (currentPhotoBlob) {
-                const photoFileName = `${uniqueId}.png`;
-                const { data: photoUpload, error: photoError } = await supabase.storage
-                    .from('wedding-assets')
-                    .upload(`photos/${photoFileName}`, currentPhotoBlob, { contentType: 'image/png' });
-
-                if (photoError) throw photoError;
-
-                const { data: publicPhotoData } = supabase.storage
-                    .from('wedding-assets')
-                    .getPublicUrl(`photos/${photoFileName}`);
-                    
-                finalPhotoUrl = publicPhotoData.publicUrl;
-            }
-
-            if (currentAudioBlob) {
-                const audioFileName = `${uniqueId}.mp3`;
-                const { data: audioUpload, error: audioError } = await supabase.storage
-                    .from('wedding-assets')
-                    .upload(`audios/${audioFileName}`, currentAudioBlob, { contentType: 'audio/mp3' });
-
-                if (audioError) throw audioError;
-
-                const { data: publicAudioData } = supabase.storage
-                    .from('wedding-assets')
-                    .getPublicUrl(`audios/${audioFileName}`);
-                    
-                finalAudioUrl = publicAudioData.publicUrl;
-            }
-
-            const { error: insertError } = await supabase
-                .from('Digipic')
-                .insert([
-                    { id: uniqueId, label: labelNama, photo_url: finalPhotoUrl, audio_url: finalAudioUrl }
-                ]);
-
-            if (insertError) throw insertError;
-
-            await fetchGalleryFromSupabase(); 
-            finishUploadSuccess();
-
-        } catch (err) {
-            alert("Gagal mengunggah kenangan ke Supabase: " + err.message);
-        } finally {
-            uploadWeddingBtn.innerText = "Kirim 🚀"; 
-            uploadWeddingBtn.disabled = false;
-        }
+            renderGallery(); 
+            resetBooth();
+            const targetSect = document.getElementById('gallery-section');
+            if (targetSect) targetSect.scrollIntoView({ behavior: 'smooth' });
+        }, 1000);
     });
-}
-
-function finishUploadSuccess() {
-    nameInputModal.classList.add('hidden');
-    boothSection.classList.add('hidden'); 
-    
-    successToast.classList.remove('hidden');
-    setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
-
-    resetBooth();
-    const targetSection = document.getElementById('gallery-section');
-    if (targetSection) targetSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 function openGalleryModal(id) {
@@ -673,7 +602,9 @@ if (modalShareBtn) {
         if (!item) return;
 
         try {
-            if (item.photoUrl.startsWith('http')) {
+            if (item.rawPhotoBlob) {
+                triggerShare(item.rawPhotoBlob);
+            } else if (item.photoUrl.startsWith('http')) {
                 modalShareBtn.innerText = "Memuat...";
                 const response = await fetch(item.photoUrl);
                 const blob = await response.blob();
@@ -681,56 +612,31 @@ if (modalShareBtn) {
                 
                 const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Galeri Kebahagiaan Sabrina & Raka',
-                        text: item.label
-                    });
-                } else {
-                    alert("Gagal membagikan langsung. Silakan download foto terlebih dahulu.");
+                    await navigator.share({ files: [file], title: 'Galeri', text: item.label });
                 }
-            } else {
-                alert("Fitur bagikan hanya tersedia untuk berkas online.");
             }
         } catch (err) {
-            console.error("Gagal membagikan:", err);
             modalShareBtn.innerText = "Bagikan";
         }
     });
 }
 
 if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => { 
-        galleryModal.classList.add('hidden'); 
-        modalAudio.pause(); 
-    });
+    closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
 }
 
 if (modalDeleteBtn) {
-    modalDeleteBtn.addEventListener('click', async () => { 
-        if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini dari database?")) { 
-            try {
-                if (supabase) {
-                    const { error } = await supabase
-                        .from('Digipic')
-                        .delete()
-                        .eq('id', activeSelectedId);
-
-                    if (error) throw error;
-                    await fetchGalleryFromSupabase(); 
-                } else {
-                    galleryData = galleryData.filter(p => p.id !== activeSelectedId);
-                    renderGallery();
-                }
-                galleryModal.classList.add('hidden'); 
-            } catch (err) {
-                alert("Gagal menghapus berkas: " + err.message);
-            }
+    modalDeleteBtn.addEventListener('click', () => { 
+        if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
+            galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
+            renderGallery(); 
+            galleryModal.classList.add('hidden'); 
         } 
     });
 }
 
 function resetBooth() {
+    stopWebcamStream();
     if (audioPlayback) { audioPlayback.classList.add('hidden'); audioPlayback.src = ""; }
     currentAudioBlob = null;
     if (recordStatus) recordStatus.innerText = "Belum merekam"; 
@@ -756,5 +662,5 @@ if (retakeBtn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => { 
-    fetchGalleryFromSupabase(); 
+    renderGallery(); 
 });
