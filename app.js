@@ -44,11 +44,9 @@ const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 const triggerUploadModalBtn = document.getElementById('triggerUploadModalBtn');
 
-// DOM Elemen Unggah Galeri Manual
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
-// DOM Kontainer Pratinjau Bersih
 const photoPreviewContainer = document.getElementById('photoPreviewContainer');
 const previewImage = document.getElementById('previewImage');
 
@@ -59,7 +57,7 @@ let currentFacingMode = 'user';
 let currentStream = null;
 let uploadedImageElement = null; 
 
-// Memuat Aset Gambar Pengantin Utama
+// Memuat Gambar Aset Pengantin
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
 
@@ -70,7 +68,6 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
-// Event Listeners Modals & Trigger Kontrol
 triggerUploadModalBtn.addEventListener('click', () => {
     nameInputModal.classList.remove('hidden');
     guestNameInput.focus();
@@ -222,14 +219,14 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // SEMBUNYIKAN SEPENUHNYA KONTAINER LIVE KAMERA DAN BINGKAI HTML-NYA
+    // Matikan tampilan kontainer live view beserta bingkai HTML luarnya
     document.getElementById('webcam-container').style.setProperty('display', 'none', 'important');
     document.getElementById('webcam-container').classList.add('hidden');
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
         const targetWidth = 800;
-        const targetHeight = 1066; // Rasio 3:4 Standar Polaroid
+        const targetHeight = 1066; 
         
         canvasElement.width = targetWidth;
         canvasElement.height = targetHeight;
@@ -241,7 +238,6 @@ function captureImage(isUploadedMode = false) {
         const vWidth = webcamElement.videoWidth || 640;
         const vHeight = webcamElement.videoHeight || 480;
         
-        // Buat resolusi Canvas konsisten di rasio vertikal portrait 3:4
         canvasElement.width = 720;
         canvasElement.height = 960;
         
@@ -253,7 +249,6 @@ function captureImage(isUploadedMode = false) {
             ctx.scale(-1, 1);
         }
         
-        // Potong gambar webcam agar masuk rasio 3:4 dengan rapi (Center Cropping)
         const scale = Math.max(canvasElement.width / vWidth, canvasElement.height / vHeight);
         const x = (canvasElement.width / 2) - (vWidth / 2) * scale;
         const y = (canvasElement.height / 2) - (vHeight / 2) * scale;
@@ -298,48 +293,51 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Gambar Bingkai Permanen di Canvas
     requestAnimationFrame(() => {
         drawCanvasFrame(ctx);
     });
 }
 
 // =========================================================================
-// PERBAIKAN BUG TATANAN LAYOUT: KOORDINAT EMOJI & BOX AMAN (ANTI-TABRAKAN)
+// SOLUSI TOTAL BUG TATANAN LAYOUT & COMPENSATE TRANSPARENT PADDING ASSET
 // =========================================================================
 function drawCanvasFrame(ctx) {
     let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
-    let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.94)', classic: 'rgba(255, 255, 255, 0.94)', romantic: 'rgba(255, 241, 242, 0.94)' };
+    let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.95)', classic: 'rgba(255, 255, 255, 0.95)', romantic: 'rgba(255, 241, 242, 0.95)' };
 
-    // 1. Gambar Border Tebal Luar Polaroid
-    const borderWidth = canvasElement.width * 0.045; // Menggunakan lebar border proporsional (~32px)
+    // 1. Gambar Bingkai Utama Polaroid
+    const borderWidth = canvasElement.width * 0.045; 
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // 2. Kalkulasi Geometri Kotak Teks Bawah (Dibuat Lebih Pendek & Presisi)
+    // 2. Kalkulasi Dimensi Box Teks Bawah secara Proporsional Mutlak
     const boxHeight = canvasElement.height * 0.125; 
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.025);
     const boxX = borderWidth + (canvasElement.width * 0.05);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // 3. AMANKAN STIKER PENGANTIN: Ditempatkan melayang tinggi di atas kotak (boxY) agar tidak menimpa teks nama
-    const assetSize = canvasElement.width * 0.16; // Ukuran proporsional stiker
+    // =====================================================================
+    // DETEKSI & POTONG TRANSPARENT SPACE: Modifikasi Y untuk melumpuhkan luapan stiker
+    // =====================================================================
+    const assetSize = canvasElement.width * 0.18; 
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + 5; // Diletakkan tepat di batas atas luar kotak teks
+    
+    // 'paddingCropOffset' memotong area kosong bawaan file pengantin.png Anda sebesar 18% dari tinggi stiker
+    const paddingCropOffset = assetSize * 0.18; 
+    const assetY = boxY - assetSize + paddingCropOffset; 
 
-    // Gambar Gambar Stiker Pengantin Permanen
+    // Menggambar Gambar Stiker Pengantin yang Telah Dikompensasi Posisinya
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // Gambar Kotak Background Tempat Teks
+    // Gambar Kotak Background Tempat Teks Latar Belakang
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     
-    // Beri border tipis pada kotak teks agar terlihat premium
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = selectedFrameStyle === 'dark' ? '#292524' : '#e7e5e4';
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
@@ -351,7 +349,7 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Ornamen Teks Sudut Kotak
+    // Ornamen Pojok Kiri & Kanan Atas Box
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.030}px Arial`;
     ctx.textAlign = 'left';
@@ -361,23 +359,22 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
 
-    // AMANKAN KALIMAT NAMA: Ditulis tepat di tengah vertikal kotak (boxY + boxHeight / 1.6) agar bebas dari tabrakan stiker atas!
+    // KUNCI AMAN POSISI NAMA: Diturunkan sedikit ke bawah agar tidak tertabrak bagian ekor stiker pengantin
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `italic ${canvasElement.width * 0.065}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.6));
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.55));
     
-    // Teks Informasi Tanggal Pernikahan
+    // Teks Subcaption Tanggal Pernikahan
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.020}px sans-serif`;
     ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.14));
 
-    // Salin Hasil Olahan Canvas ke Tag Preview Image secara Bersih
+    // Inject Hasil Pemrosesan ke Tag Preview Image Elemen secara Instan
     setTimeout(() => {
         const dataUrl = canvasElement.toDataURL('image/png');
         previewImage.src = dataUrl;
         
-        // Tampilkan kontainer pratinjau utama
         photoPreviewContainer.classList.remove('hidden'); 
         photoPreviewContainer.style.setProperty('display', 'flex', 'important');
 
@@ -406,7 +403,7 @@ async function initAudioRecorder() {
 }
 
 recordBtn.addEventListener('click', () => {
-    if (!mediaRecorder) return alert("Izin mikrofon belum diaktifkan.");
+    if (!mediaRecorder) return alert("Izin mikrofon belum aktif.");
     if (mediaRecorder.state === "inactive") {
         audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
     } else {
@@ -500,9 +497,6 @@ modalDeleteBtn.addEventListener('click', () => {
     } 
 });
 
-// =========================================================================
-// FIX BUG PREVIEW & LUAPAN: STRIP DAN RESET TOTAL ELEMENT MEDIA SISA
-// =========================================================================
 function resetBooth() {
     audioPlayback.classList.add('hidden'); 
     audioPlayback.src = ""; 
@@ -515,23 +509,19 @@ function resetBooth() {
     galleryInput.value = ""; 
     uploadedImageElement = null;
     
-    // 1. Flush gambar preview agar bersih sempurna
     if (previewImage) {
         previewImage.removeAttribute('src');
         previewImage.src = "";
     }
     
-    // 2. Tutup wadah penampung preview image
     if (photoPreviewContainer) {
         photoPreviewContainer.classList.add('hidden');
         photoPreviewContainer.style.setProperty('display', 'none', 'important');
     }
 
-    // 3. Kembalikan & tampilkan ulang UI Frame Live Kamera HTML bawaan
     if (frameUI) frameUI.classList.remove('hidden');
     if (frameCardInner) frameCardInner.classList.remove('hidden');
 
-    // 4. Nyalakan wadah penampung aliran video kamera utama
     document.getElementById('webcam-container').classList.remove('hidden');
     document.getElementById('webcam-container').style.setProperty('display', 'block', 'important');
     webcamElement.classList.remove('hidden'); 
@@ -546,7 +536,6 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    // Jeda microtask rendering DOM sebelum mengalirkan stream kamera baru
     setTimeout(() => {
         startWebcam(); 
     }, 50);
