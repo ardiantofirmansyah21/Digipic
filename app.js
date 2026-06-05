@@ -136,7 +136,7 @@ galleryInput.addEventListener('change', (e) => {
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
                 
-                // Eksekusi pemotretan mode unggah galeri
+                // Jalankan proses pembentukan gambar
                 captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
@@ -256,13 +256,14 @@ function triggerFlashAndCapture() {
     }, 400);
 }
 
-// ==========================================
-// FIX REPAINT BUG SAAT PREVIEW BROWSER MOBILE
-// ==========================================
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
+    // Sembunyikan video stream asli dari layar
+    webcamElement.classList.add('hidden');
+
     if (isUploadedMode && uploadedImageElement) {
+        // --- JALUR FOTO DARI GALERI ---
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
@@ -277,16 +278,31 @@ function captureImage(isUploadedMode = false) {
             }
         }
         
+        // Inisialisasi resolusi internal canvas
         canvasElement.width = targetWidth;
         canvasElement.height = targetHeight;
+        
+        // PERBAIKAN UTAMA: Paksa CSS canvas meregang di layar HP sesuai aspek rasio gambarnya
+        canvasElement.style.width = "100%";
+        canvasElement.style.height = "auto";
+        canvasElement.style.aspectRatio = `${targetWidth} / ${targetHeight}`;
         
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
+        // --- JALUR TAKE PICTURE KAMERA ---
         webcamElement.pause(); 
         
-        canvasElement.width = webcamElement.videoWidth || 640;
-        canvasElement.height = webcamElement.videoHeight || 480;
+        const vWidth = webcamElement.videoWidth || 640;
+        const vHeight = webcamElement.videoHeight || 480;
+        
+        canvasElement.width = vWidth;
+        canvasElement.height = vHeight;
+        
+        // Paksa CSS canvas meregang di layar HP sesuai aspek rasio video kamera
+        canvasElement.style.width = "100%";
+        canvasElement.style.height = "auto";
+        canvasElement.style.aspectRatio = `${vWidth} / ${vHeight}`;
         
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         if (currentFacingMode === 'user') {
@@ -350,16 +366,13 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // SOLUSI UTAMA: Tukar visibilitas UI dan berikan jeda render frame mikro
-    webcamElement.classList.add('hidden');
+    // Tampilkan canvas statis ke hadapan layar
     canvasElement.classList.remove('hidden');
 
-    // Minta browser menggambar grafik secara paksa ke layar viewport sebelum render teks bingkai
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            drawCanvasFrame(ctx);
-        }, 50);
-    });
+    // Berikan micro-timeout agar browser mobile sempat melakukan reflow render UI layout
+    setTimeout(() => {
+        drawCanvasFrame(ctx);
+    }, 60);
 }
 
 function drawCanvasFrame(ctx) {
