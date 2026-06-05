@@ -1,6 +1,6 @@
 // Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
-const boothSection = document.getElementById('booth-section');
+const boothModal = document.getElementById('booth-modal');
 const webcamElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('photoCanvas'); 
 const captureBtn = document.getElementById('captureBtn');
@@ -13,6 +13,7 @@ const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 const audioPlayback = document.getElementById('audioPlayback');
+const scrollToGalleryBtn = document.getElementById('scrollToGalleryBtn');
 
 let mediaRecorder;
 let audioChunks = [];
@@ -68,6 +69,11 @@ let galleryData = [
 ];
 let activeSelectedId = null;
 
+// Fungsi Scroll Halus ke Galeri
+scrollToGalleryBtn.addEventListener('click', () => {
+    document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
+});
+
 triggerUploadModalBtn.addEventListener('click', () => {
     nameInputModal.classList.remove('hidden');
     guestNameInput.focus();
@@ -76,9 +82,8 @@ cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hi
 
 closeBoothBtn.addEventListener('click', () => {
     stopWebcamStream();
-    boothSection.classList.add('hidden');
+    boothModal.classList.add('hidden');
     resetBooth();
-    startBoothBtn.classList.remove('hidden');
 });
 
 function stopWebcamStream() {
@@ -99,8 +104,7 @@ switchCameraBtn.addEventListener('click', () => {
 });
 
 startBoothBtn.addEventListener('click', () => {
-    startBoothBtn.classList.add('hidden');
-    boothSection.classList.remove('hidden');
+    boothModal.classList.remove('hidden');
     resetBooth();
     startWebcam();
 });
@@ -115,6 +119,7 @@ galleryInput.addEventListener('change', (e) => {
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
+                boothModal.classList.remove('hidden'); // Tetap jalankan di dalam layar popup khusus
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
@@ -135,7 +140,7 @@ async function startWebcam() {
     document.getElementById('webcam-container').style.setProperty('display', 'block', 'important');
     document.getElementById('webcam-container').classList.remove('hidden');
     webcamElement.classList.remove('hidden');
-    frameUI.classList.remove('hidden'); // Memastikan Frame Live muncul kembali
+    frameUI.classList.remove('hidden'); 
     
     try {
         const constraints = {
@@ -161,24 +166,24 @@ window.changeFilter = function(filterType) {
 window.changeFrameStyle = function(style) {
     selectedFrameStyle = style;
     if (style === 'dark') {
-        frameUI.style.borderColor = '#1c1917';
+        frameUI.style.borderColor = '#0c0a09';
         decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
         decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center";
+        frameCardInner.className = "w-full bg-stone-950/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-stone-800/60 text-center flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-amber-400 font-bold leading-none";
         weddingDate.className = "text-[6px] text-stone-400 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'classic') {
         frameUI.style.borderColor = '#ffffff';
         decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
         decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
-        frameCardInner.className = "w-full bg-white/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-200 text-center shadow-lg flex flex-col items-center";
+        frameCardInner.className = "w-full bg-white/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-stone-200 text-center flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-stone-900 font-bold leading-none";
         weddingDate.className = "text-[6px] text-stone-500 font-medium tracking-widest uppercase mt-0.5";
     } else if (style === 'romantic') {
         frameUI.style.borderColor = '#ffe4e6';
         decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
         decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
-        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-rose-200 text-center shadow-lg flex flex-col items-center";
+        frameCardInner.className = "w-full bg-rose-50/95 backdrop-blur-xs px-3 py-2 rounded-xl border border-rose-200 text-center flex flex-col items-center";
         weddingTitle.className = "font-handwriting text-xl text-rose-700 font-bold leading-none";
         weddingDate.className = "text-[6px] text-rose-900/60 font-medium tracking-widest uppercase mt-0.5";
     }
@@ -211,27 +216,22 @@ function triggerFlashAndCapture() {
     
     setTimeout(() => {
         flashEffect.style.opacity = '0';
-        setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
+        setTimeout(() => { flashEffect.classList.add('hidden'); }, 150);
         captureImage(false); 
-    }, 400);
+    }, 300);
 }
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // SEMBUNYIKAN FRAME LIVE KAMERA AGAR TIDAK BOCOR KELUAR
     document.getElementById('webcam-container').style.setProperty('display', 'none', 'important');
     document.getElementById('webcam-container').classList.add('hidden');
     frameUI.classList.add('hidden'); 
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
-        const targetWidth = 800;
-        const targetHeight = 1066; 
-        
-        canvasElement.width = targetWidth;
-        canvasElement.height = targetHeight;
-        
+        canvasElement.width = 720;
+        canvasElement.height = 960;
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
@@ -259,7 +259,6 @@ function captureImage(isUploadedMode = false) {
         stopWebcamStream();
     }
     
-    // Pemrosesan Efek Filter
     const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
     const data = imgData.data;
     
@@ -305,30 +304,25 @@ function drawCanvasFrame(ctx) {
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
     let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.95)', classic: 'rgba(255, 255, 255, 0.95)', romantic: 'rgba(255, 241, 242, 0.95)' };
 
-    // 1. Bingkai Utama Polaroid (Stroke Terluar)
     const borderWidth = canvasElement.width * 0.045; 
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = borderColors[selectedFrameStyle];
     ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
 
-    // 2. Kalkulasi Dimensi Box Teks Bawah secara Proporsional Mutlak
     const boxHeight = canvasElement.height * 0.125; 
     const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.025);
     const boxX = borderWidth + (canvasElement.width * 0.05);
     const boxWidth = canvasElement.width - (boxX * 2);
 
-    // 3. Kompensasi Padding Kosong pada Asset Pengantin
     const assetSize = canvasElement.width * 0.18; 
     const assetX = (canvasElement.width / 2) - (assetSize / 2);
     const paddingCropOffset = assetSize * 0.18; 
     const assetY = boxY - assetSize + paddingCropOffset; 
 
-    // Gambar Stiker Pengantin (Render di dalam Canvas)
     if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
         ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
     }
 
-    // Kotak Latar Belakang Teks
     ctx.fillStyle = bgBoxColors[selectedFrameStyle];
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     
@@ -343,7 +337,6 @@ function drawCanvasFrame(ctx) {
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
-    // Ornamen Teks
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `${canvasElement.width * 0.030}px Arial`;
     ctx.textAlign = 'left';
@@ -353,18 +346,15 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.012));
 
-    // Nama Pengantin
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `italic ${canvasElement.width * 0.065}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
     ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.55));
     
-    // Tanggal
     ctx.fillStyle = subTextColors[selectedFrameStyle];
     ctx.font = `bold ${canvasElement.width * 0.020}px sans-serif`;
     ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.14));
 
-    // Inject ke Tag Preview secara Instan & Tampilkan Bersih
     setTimeout(() => {
         const dataUrl = canvasElement.toDataURL('image/png');
         previewImage.src = dataUrl;
@@ -429,20 +419,16 @@ function renderGallery() {
     weddingGalleryGrid.innerHTML = "";
     galleryData.forEach(item => {
         const card = document.createElement('div');
-        card.className = "bg-stone-900 p-2 rounded-xl border border-stone-800/60 cursor-pointer transform hover:scale-[1.02] transition-all";
+        card.className = "bg-white p-2 rounded-xl border border-stone-200 cursor-pointer shadow-xs transform hover:scale-[1.02] transition-all";
         card.addEventListener('click', () => openGalleryModal(item.id));
-        card.innerHTML = `<div class='overflow-hidden rounded-lg aspect-[3/4]'><img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'></div><p class='text-[9px] font-medium text-stone-400 text-center mt-2 truncate px-1'>${item.label}</p>`;
+        card.innerHTML = `<div class='overflow-hidden rounded-lg aspect-[3/4]'><img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'></div><p class='text-[9px] font-medium text-stone-600 text-center mt-2 truncate px-1 pt-0.5'>${item.label}</p>`;
         weddingGalleryGrid.appendChild(card);
     });
 }
 
 uploadWeddingBtn.addEventListener('click', () => {
     const namaTamu = guestNameInput.value.trim();
-    if (namaTamu === "") {
-        alert("Nama tidak boleh kosong!");
-        guestNameInput.focus();
-        return;
-    }
+    if (namaTamu === "") { alert("Nama tidak boleh kosong!"); guestNameInput.focus(); return; }
 
     uploadWeddingBtn.innerText = "Mengirim..."; 
     uploadWeddingBtn.disabled = true;
@@ -460,14 +446,13 @@ uploadWeddingBtn.addEventListener('click', () => {
         });
         
         nameInputModal.classList.add('hidden');
-        boothSection.classList.add('hidden'); 
+        boothModal.classList.add('hidden'); 
         
         successToast.classList.remove('hidden');
         setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
 
         renderGallery(); 
         resetBooth();
-        startBoothBtn.classList.remove('hidden');
         
         document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
     }, 1000);
@@ -513,7 +498,6 @@ function resetBooth() {
         photoPreviewContainer.style.setProperty('display', 'none', 'important');
     }
 
-    // Pastikan UI Live Kamera bersih saat dibuka kembali
     document.getElementById('webcam-container').classList.remove('hidden');
     document.getElementById('webcam-container').style.setProperty('display', 'block', 'important');
     webcamElement.classList.remove('hidden'); 
@@ -529,14 +513,10 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    setTimeout(() => {
-        startWebcam(); 
-    }, 50);
+    setTimeout(() => { startWebcam(); }, 50);
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
     renderGallery(); 
-    if (document.fonts) {
-        document.fonts.load("italic 40px 'Great Vibes'");
-    }
+    if (document.fonts) { document.fonts.load("italic 40px 'Great Vibes'"); }
 });
