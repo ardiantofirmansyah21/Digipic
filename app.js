@@ -3,7 +3,9 @@
 // ==========================================
 const SUPABASE_URL = "https://fehdsbsdjcyifefsqnzm.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ugGoNz1zo28WdTvb7iI64Q_9lw5-dd1";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// PERBAIKAN: Menggunakan window.supabase untuk memastikan library terwujud dengan benar
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
