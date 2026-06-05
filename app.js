@@ -254,17 +254,12 @@ function triggerFlashAndCapture() {
     }, 400);
 }
 
-// ==========================================================
-// FUNGSI UTAMA YANG DIPERBAIKI SECARA SINKRONUS (ANTI-LIVE)
-// ==========================================================
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
     if (!isUploadedMode) {
-        // SOLUSI JITU 1: Bekukan frame video langsung di tempat (Freeze state)
+        // Hentikan video stream di layar secara sinkronus agar langsung membeku
         webcamElement.pause();
-        
-        // Langsung tukar visibilitas elemen UI agar video tertutup canvas statis
         webcamElement.classList.add('hidden');
         canvasElement.classList.remove('hidden');
     }
@@ -288,7 +283,6 @@ function captureImage(isUploadedMode = false) {
         canvasElement.height = targetHeight;
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
-        // Ambil dimensi asli video streams
         canvasElement.width = webcamElement.videoWidth || 640;
         canvasElement.height = webcamElement.videoHeight || 480;
         
@@ -296,9 +290,11 @@ function captureImage(isUploadedMode = false) {
             ctx.translate(canvasElement.width, 0);
             ctx.scale(-1, 1);
         }
-        // Salin snapshot video ke dalam konteks canvas 2D
         ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        // Segera matikan hardware kamera agar sisa buffer video tidak membocori canvas
+        stopWebcamStream();
     }
     
     // Pemrosesan Filter Efek Piksel
@@ -352,10 +348,10 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    drawCanvasFrame(ctx, isUploadedMode);
+    drawCanvasFrame(ctx);
 }
 
-function drawCanvasFrame(ctx, isUploadedMode = false) {
+function drawCanvasFrame(ctx) {
     let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
@@ -398,28 +394,21 @@ function drawCanvasFrame(ctx, isUploadedMode = false) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
-        ctx.fillStyle = textColors[selectedFrameStyle];
-        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
-        ctx.textAlign = 'center';
-        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
-        
-        ctx.fillStyle = subTextColors[selectedFrameStyle];
-        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+    // Eksekusi Teks Berjalan Instan Sinkronus Tanpa document.fonts.load di sini
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+    ctx.textAlign = 'center';
+    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+    
+    ctx.fillStyle = subTextColors[selectedFrameStyle];
+    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-        canvasElement.toBlob((blob) => { 
-            currentPhotoBlob = blob; 
-            afterCaptureBtn.classList.remove('hidden');
-            
-            // SOLUSI JITU 2: Kamera hardware baru dimatikan total di sini, aman dari resiko blank hitam
-            if (!isUploadedMode) {
-                stopWebcamStream();
-            }
-            
-            initAudioRecorder();
-        }, 'image/png');
-    });
+    canvasElement.toBlob((blob) => { 
+        currentPhotoBlob = blob; 
+        afterCaptureBtn.classList.remove('hidden');
+        initAudioRecorder();
+    }, 'image/png');
 }
 
 async function initAudioRecorder() {
@@ -552,4 +541,8 @@ retakeBtn.addEventListener('click', () => {
 
 document.addEventListener('DOMContentLoaded', () => { 
     renderGallery(); 
+    // Ambil aset font seawal mungkin agar siap sedia tanpa delay pemrosesan canvas
+    if (document.fonts) {
+        document.fonts.load("italic 40px 'Great Vibes'");
+    }
 });
