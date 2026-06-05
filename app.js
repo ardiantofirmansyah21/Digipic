@@ -4,8 +4,20 @@
 const SUPABASE_URL = "https://fehdsbsdjcyifefsqnzm.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ugGoNz1zo28WdTvb7iI64Q_9lw5-dd1";
 
-// PERBAIKAN: Menggunakan window.supabase untuk memastikan library terwujud dengan benar
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+
+// Inisialisasi Supabase Client yang aman dan kompatibel dengan CDN
+try {
+    if (typeof Supabase !== 'undefined') {
+        supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else if (typeof window.supabase !== 'undefined') {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        console.warn("Pustaka Supabase tidak terdeteksi. Berjalan dalam mode local fallback.");
+    }
+} catch (error) {
+    console.error("Gagal menginisialisasi Supabase:", error);
+}
 
 // Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
@@ -83,25 +95,30 @@ let uploadedImageElement = null;
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
 
-// Data penampung lokal yang nanti sinkron dengan database
+// Tempat penyimpanan data lokal untuk galeri
 let galleryData = [];
 let activeSelectedId = null;
 
-openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+// EVENT LISTENERS MANAGEMENT
+if (openSettingsBtn) openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-triggerUploadModalBtn.addEventListener('click', () => {
-    nameInputModal.classList.remove('hidden');
-    guestNameInput.focus();
-});
-cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
+if (triggerUploadModalBtn) {
+    triggerUploadModalBtn.addEventListener('click', () => {
+        nameInputModal.classList.remove('hidden');
+        guestNameInput.focus();
+    });
+}
+if (cancelUploadBtn) cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
 
-closeBoothBtn.addEventListener('click', () => {
-    stopWebcamStream();
-    settingsModal.classList.add('hidden');
-    boothSection.classList.add('hidden');
-    resetBooth();
-});
+if (closeBoothBtn) {
+    closeBoothBtn.addEventListener('click', () => {
+        stopWebcamStream();
+        settingsModal.classList.add('hidden');
+        boothSection.classList.add('hidden');
+        resetBooth();
+    });
+}
 
 function stopWebcamStream() {
     if (currentStream) {
@@ -110,45 +127,53 @@ function stopWebcamStream() {
     }
 }
 
-switchCameraBtn.addEventListener('click', () => {
-    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-    if (currentFacingMode === 'user') {
-        webcamElement.classList.add('transform', '-scale-x-100');
-    } else {
-        webcamElement.classList.remove('transform', '-scale-x-100');
-    }
-    startWebcam();
-});
+if (switchCameraBtn) {
+    switchCameraBtn.addEventListener('click', () => {
+        currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+        if (currentFacingMode === 'user') {
+            webcamElement.classList.add('transform', '-scale-x-100');
+        } else {
+            webcamElement.classList.remove('transform', '-scale-x-100');
+        }
+        startWebcam();
+    });
+}
 
-startBoothBtn.addEventListener('click', () => {
-    boothSection.classList.remove('hidden');
-    startWebcam();
-});
+if (startBoothBtn) {
+    startBoothBtn.addEventListener('click', () => {
+        boothSection.classList.remove('hidden');
+        startWebcam();
+    });
+}
 
-triggerGalleryBtn.addEventListener('click', () => {
-    galleryInput.click();
-});
+if (triggerGalleryBtn) {
+    triggerGalleryBtn.addEventListener('click', () => {
+        galleryInput.click();
+    });
+}
 
-galleryInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        stopWebcamStream();
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            uploadedImageElement = new Image();
-            uploadedImageElement.onload = function() {
-                preCaptureAction.classList.add('hidden'); 
-                switchCameraBtn.classList.add('hidden');
-                closeBoothBtn.classList.add('hidden'); 
-                settingsModal.classList.add('hidden');
-                frameUI.classList.add('hidden'); 
-                captureImage(true); 
+if (galleryInput) {
+    galleryInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            stopWebcamStream();
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedImageElement = new Image();
+                uploadedImageElement.onload = function() {
+                    preCaptureAction.classList.add('hidden'); 
+                    switchCameraBtn.classList.add('hidden');
+                    closeBoothBtn.classList.add('hidden'); 
+                    settingsModal.classList.add('hidden');
+                    frameUI.classList.add('hidden'); 
+                    captureImage(true); 
+                };
+                uploadedImageElement.src = event.target.result;
             };
-            uploadedImageElement.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-});
+            reader.readAsDataURL(file);
+        }
+    });
+}
 
 async function startWebcam() {
     if (currentStream) {
@@ -163,10 +188,10 @@ async function startWebcam() {
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
         webcamElement.onloadedmetadata = () => {
-            webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
+            webcamElement.play().catch(e => console.log("Autoplay diblokir:", e));
         };
     } catch (err) {
-        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung.");
+        alert("Gagal mengakses kamera. Pastikan izin kamera telah diberikan.");
     }
 }
 
@@ -187,7 +212,9 @@ window.changeFilter = function(filterType) {
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-1.5 rounded-lg font-medium text-stone-300";
     }
-    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    if (event && event.currentTarget) {
+        event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    }
     webcamElement.className = `w-full h-full object-contain ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
 };
 
@@ -197,7 +224,9 @@ window.changeFrameStyle = function(style) {
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-xl font-medium text-stone-300";
     }
-    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
+    if (event && event.currentTarget) {
+        event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
+    }
 
     if (style === 'dark') {
         frameCardInner.className = "w-11/12 mx-auto bg-stone-950 bg-opacity-65 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 shadow-lg flex items-center gap-2 mb-2";
@@ -214,30 +243,32 @@ window.changeFrameStyle = function(style) {
     }
 };
 
-captureBtn.addEventListener('click', () => {
-    preCaptureAction.classList.add('hidden'); 
-    switchCameraBtn.classList.add('hidden');
-    closeBoothBtn.classList.add('hidden'); 
-    settingsModal.classList.add('hidden');
-    frameUI.classList.add('hidden'); 
-    
-    if (useTimer) {
-        countdownOverlay.classList.remove('hidden');
-        let count = 3;
-        countdownText.innerText = count;
-        let timer = setInterval(() => { 
-            count--; 
-            if (count > 0) { countdownText.innerText = count; } 
-            else { 
-                clearInterval(timer); 
-                countdownOverlay.classList.add('hidden'); 
-                triggerFlashAndCapture(); 
-            } 
-        }, 1000);
-    } else {
-        triggerFlashAndCapture();
-    }
-});
+if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+        preCaptureAction.classList.add('hidden'); 
+        switchCameraBtn.classList.add('hidden');
+        closeBoothBtn.classList.add('hidden'); 
+        settingsModal.classList.add('hidden');
+        frameUI.classList.add('hidden'); 
+        
+        if (useTimer) {
+            countdownOverlay.classList.remove('hidden');
+            let count = 3;
+            countdownText.innerText = count;
+            let timer = setInterval(() => { 
+                count--; 
+                if (count > 0) { countdownText.innerText = count; } 
+                else { 
+                    clearInterval(timer); 
+                    countdownOverlay.classList.add('hidden'); 
+                    triggerFlashAndCapture(); 
+                } 
+            }, 1000);
+        } else {
+            triggerFlashAndCapture();
+        }
+    });
+}
 
 function triggerFlashAndCapture() {
     flashEffect.classList.remove('hidden');
@@ -251,7 +282,6 @@ function triggerFlashAndCapture() {
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
-    
     canvasElement.width = 768;
     canvasElement.height = 1024;
 
@@ -354,7 +384,6 @@ function captureImage(isUploadedMode = false) {
     let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#d6d3d1', classic: '#57534e', romantic: '#9f1239' };
-    
     let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.65)', classic: 'rgba(255, 255, 255, 0.65)', romantic: 'rgba(255, 241, 242, 0.65)' };
     let innerBorderColors = { dark: 'rgba(255,255,255,0.1)', classic: 'rgba(0,0,0,0.08)', romantic: 'rgba(255,255,255,0.2)' };
 
@@ -372,7 +401,6 @@ function captureImage(isUploadedMode = false) {
     ctx.beginPath();
     ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
     ctx.fill();
-    
     ctx.lineWidth = 1;
     ctx.strokeStyle = innerBorderColors[selectedFrameStyle];
     ctx.stroke();
@@ -389,9 +417,9 @@ function captureImage(isUploadedMode = false) {
 
     const contentStartX = assetX + assetWidth + 16; 
     let decorSet = {
-        dark: { left: "✨", right: "✨", bottom: "✨ 💕 ✨" },
-        classic: { left: "🌸", right: "🌸", bottom: "✨ 💕 ✨" },
-        romantic: { left: "❤️", right: "❤️", bottom: "🎈 ❤️ 🎈" }
+        dark: { bottom: "✨ 💕 ✨" },
+        classic: { bottom: "✨ 💕 ✨" },
+        romantic: { bottom: "🎈 ❤️ 🎈" }
     };
     let currentDecor = decorSet[selectedFrameStyle];
 
@@ -432,29 +460,35 @@ async function initAudioRecorder() {
             audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Akses mikrofon dilewati.");
+        console.log("Mikrofon dilewati atau tidak diizinkan.");
     }
 }
 
-recordBtn.addEventListener('click', () => {
-    if (!mediaRecorder) return alert("Mikrofon belum diizinkan.");
-    if (mediaRecorder.state === "inactive") {
-        audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
-    } else {
-        mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
-    }
-});
+if (recordBtn) {
+    recordBtn.addEventListener('click', () => {
+        if (!mediaRecorder) return alert("Izin mikrofon diperlukan.");
+        if (mediaRecorder.state === "inactive") {
+            audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
+        } else {
+            mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
+        }
+    });
+}
 
-canvasContainer.addEventListener('click', () => {
-    if (canvasElement) {
-        const dataUrl = canvasElement.toDataURL('image/png');
-        fullscreenImg.src = dataUrl;
-        fullscreenPreviewModal.classList.remove('hidden');
-    }
-});
-closeFullscreenBtn.addEventListener('click', () => {
-    fullscreenPreviewModal.classList.add('hidden');
-});
+if (canvasContainer) {
+    canvasContainer.addEventListener('click', () => {
+        if (canvasElement) {
+            const dataUrl = canvasElement.toDataURL('image/png');
+            fullscreenImg.src = dataUrl;
+            fullscreenPreviewModal.classList.remove('hidden');
+        }
+    });
+}
+if (closeFullscreenBtn) {
+    closeFullscreenBtn.addEventListener('click', () => {
+        fullscreenPreviewModal.classList.add('hidden');
+    });
+}
 
 function triggerShare(blobFile) {
     if (!blobFile) return;
@@ -465,14 +499,17 @@ function triggerDownload(blobFile) {
     if (!blobFile) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
 }
-shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
-downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
-modalDownloadBtn.addEventListener('click', () => {
-    const item = galleryData.find(p => p.id === activeSelectedId);
-    if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
-});
+if (shareBtn) shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
+if (downloadBtn) downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
+if (modalDownloadBtn) {
+    modalDownloadBtn.addEventListener('click', () => {
+        const item = galleryData.find(p => p.id === activeSelectedId);
+        if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+    });
+}
 
 function renderGallery() {
+    if (!weddingGalleryGrid) return;
     weddingGalleryGrid.innerHTML = "";
     galleryData.forEach(item => {
         const card = document.createElement('div');
@@ -483,11 +520,12 @@ function renderGallery() {
     });
 }
 
-// AMBIL DATA DARI DATABASE SUPABASE
+// AMBIL DATA DARI DATABASE SUPABASE (TABEL: Digipic)
 async function fetchGalleryFromSupabase() {
+    if (!supabase) return;
     try {
         const { data, error } = await supabase
-            .from('wedding_booth')
+            .from('Digipic')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -503,86 +541,111 @@ async function fetchGalleryFromSupabase() {
             renderGallery();
         }
     } catch (err) {
-        console.error("Gagal mengambil data dari Supabase:", err.message);
+        console.error("Gagal mengambil data dari tabel Digipic:", err.message);
     }
 }
 
-// KIRIM DATA KE DATABASE SUPABASE (STORAGE & TABLE)
-uploadWeddingBtn.addEventListener('click', async () => {
-    const namaTamu = guestNameInput.value.trim();
-    if (namaTamu === "") {
-        alert("Nama tidak boleh kosong!");
-        guestNameInput.focus();
-        return;
-    }
+// KIRIM DATA KE DATABASE SUPABASE (STORAGE BUCKET & TABEL: Digipic)
+if (uploadWeddingBtn) {
+    uploadWeddingBtn.addEventListener('click', async () => {
+        const namaTamu = guestNameInput.value.trim();
+        if (namaTamu === "") {
+            alert("Nama tidak boleh kosong!");
+            guestNameInput.focus();
+            return;
+        }
 
-    uploadWeddingBtn.innerText = "Mengirim..."; 
-    uploadWeddingBtn.disabled = true;
+        uploadWeddingBtn.innerText = "Mengirim..."; 
+        uploadWeddingBtn.disabled = true;
 
-    try {
         const uniqueId = "photo-" + Date.now();
-        let finalPhotoUrl = "";
-        let finalAudioUrl = null;
-
-        // 1. Upload Foto Ke Supabase Storage Bucket
-        if (currentPhotoBlob) {
-            const photoFileName = `${uniqueId}.png`;
-            const { data: photoUpload, error: photoError } = await supabase.storage
-                .from('wedding-assets')
-                .upload(`photos/${photoFileName}`, currentPhotoBlob, { contentType: 'image/png' });
-
-            if (photoError) throw photoError;
-
-            const { data: publicPhotoData } = supabase.storage
-                .from('wedding-assets')
-                .getPublicUrl(`photos/${photoFileName}`);
-                
-            finalPhotoUrl = publicPhotoData.publicUrl;
-        }
-
-        // 2. Upload Audio Ke Supabase Storage Bucket (Jika ada)
-        if (currentAudioBlob) {
-            const audioFileName = `${uniqueId}.mp3`;
-            const { data: audioUpload, error: audioError } = await supabase.storage
-                .from('wedding-assets')
-                .upload(`audios/${audioFileName}`, currentAudioBlob, { contentType: 'audio/mp3' });
-
-            if (audioError) throw audioError;
-
-            const { data: publicAudioData } = supabase.storage
-                .from('wedding-assets')
-                .getPublicUrl(`audios/${audioFileName}`);
-                
-            finalAudioUrl = publicAudioData.publicUrl;
-        }
-
-        // 3. Masukkan Informasi Teks ke Supabase Table
         const labelNama = `✨ Oleh: ${namaTamu}`;
-        const { error: insertError } = await supabase
-            .from('wedding_booth')
-            .insert([
-                { id: uniqueId, label: labelNama, photo_url: finalPhotoUrl, audio_url: finalAudioUrl }
-            ]);
 
-        if (insertError) throw insertError;
+        // Fallback jika koneksi internet terputus atau client database gagal dimuat
+        if (!supabase) {
+            let localPhotoUrl = canvasElement.toDataURL('image/png');
+            let localAudioUrl = currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null;
+            
+            galleryData.unshift({
+                id: uniqueId,
+                photoUrl: localPhotoUrl,
+                audioUrl: localAudioUrl,
+                label: labelNama
+            });
+            
+            renderGallery();
+            finishUploadSuccess();
+            return;
+        }
 
-        nameInputModal.classList.add('hidden');
-        boothSection.classList.add('hidden'); 
-        
-        successToast.classList.remove('hidden');
-        setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
+        try {
+            let finalPhotoUrl = "";
+            let finalAudioUrl = null;
 
-        await fetchGalleryFromSupabase(); 
-        resetBooth();
-        document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
+            // 1. Upload file foto ke Storage Bucket (wedding-assets)
+            if (currentPhotoBlob) {
+                const photoFileName = `${uniqueId}.png`;
+                const { data: photoUpload, error: photoError } = await supabase.storage
+                    .from('wedding-assets')
+                    .upload(`photos/${photoFileName}`, currentPhotoBlob, { contentType: 'image/png' });
 
-    } catch (err) {
-        alert("Gagal mengunggah kenangan: " + err.message);
-    } finally {
-        uploadWeddingBtn.innerText = "Kirim 🚀"; 
-        uploadWeddingBtn.disabled = false;
-    }
-});
+                if (photoError) throw photoError;
+
+                const { data: publicPhotoData } = supabase.storage
+                    .from('wedding-assets')
+                    .getPublicUrl(`photos/${photoFileName}`);
+                    
+                finalPhotoUrl = publicPhotoData.publicUrl;
+            }
+
+            // 2. Upload file audio ke Storage Bucket jika ada perekaman suara
+            if (currentAudioBlob) {
+                const audioFileName = `${uniqueId}.mp3`;
+                const { data: audioUpload, error: audioError } = await supabase.storage
+                    .from('wedding-assets')
+                    .upload(`audios/${audioFileName}`, currentAudioBlob, { contentType: 'audio/mp3' });
+
+                if (audioError) throw audioError;
+
+                const { data: publicAudioData } = supabase.storage
+                    .from('wedding-assets')
+                    .getPublicUrl(`audios/${audioFileName}`);
+                    
+                finalAudioUrl = publicAudioData.publicUrl;
+            }
+
+            // 3. Memasukkan tautan URL file data ke tabel Digipic
+            const { error: insertError } = await supabase
+                .from('Digipic')
+                .insert([
+                    { id: uniqueId, label: labelNama, photo_url: finalPhotoUrl, audio_url: finalAudioUrl }
+                ]);
+
+            if (insertError) throw insertError;
+
+            await fetchGalleryFromSupabase(); 
+            finishUploadSuccess();
+
+        } catch (err) {
+            alert("Gagal mengunggah kenangan ke Supabase: " + err.message);
+        } finally {
+            uploadWeddingBtn.innerText = "Kirim 🚀"; 
+            uploadWeddingBtn.disabled = false;
+        }
+    });
+}
+
+function finishUploadSuccess() {
+    nameInputModal.classList.add('hidden');
+    boothSection.classList.add('hidden'); 
+    
+    successToast.classList.remove('hidden');
+    setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
+
+    resetBooth();
+    const targetSection = document.getElementById('gallery-section');
+    if (targetSection) targetSection.scrollIntoView({ behavior: 'smooth' });
+}
 
 function openGalleryModal(id) {
     const item = galleryData.find(p => p.id === id); 
@@ -604,77 +667,93 @@ function openGalleryModal(id) {
     galleryModal.classList.remove('hidden');
 }
 
-modalShareBtn.addEventListener('click', async () => {
-    const item = galleryData.find(p => p.id === activeSelectedId);
-    if (!item) return;
+if (modalShareBtn) {
+    modalShareBtn.addEventListener('click', async () => {
+        const item = galleryData.find(p => p.id === activeSelectedId);
+        if (!item) return;
 
-    try {
-        if (item.photoUrl.startsWith('http')) {
-            modalShareBtn.innerText = "Memuat...";
-            const response = await fetch(item.photoUrl);
-            const blob = await response.blob();
-            modalShareBtn.innerText = "Bagikan";
-            
-            const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Galeri Kebahagiaan Sabrina & Raka',
-                    text: item.label
-                });
-            } else {
-                alert("Fitur bagikan file tidak didukung di browser ini. Silakan unduh foto terlebih dahulu.");
-            }
-        }
-    } catch (err) {
-        console.error("Gagal membagikan:", err);
-        modalShareBtn.innerText = "Bagikan";
-    }
-});
-
-closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
-
-modalDeleteBtn.addEventListener('click', async () => { 
-    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini secara permanen dari database?")) { 
         try {
-            const item = galleryData.find(p => p.id === activeSelectedId);
-            if (!item) return;
-
-            // Hapus record dari table
-            const { error } = await supabase
-                .from('wedding_booth')
-                .delete()
-                .eq('id', activeSelectedId);
-
-            if (error) throw error;
-
-            await fetchGalleryFromSupabase(); 
-            galleryModal.classList.add('hidden'); 
+            if (item.photoUrl.startsWith('http')) {
+                modalShareBtn.innerText = "Memuat...";
+                const response = await fetch(item.photoUrl);
+                const blob = await response.blob();
+                modalShareBtn.innerText = "Bagikan";
+                
+                const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Galeri Kebahagiaan Sabrina & Raka',
+                        text: item.label
+                    });
+                } else {
+                    alert("Gagal membagikan langsung. Silakan download foto terlebih dahulu.");
+                }
+            } else {
+                alert("Fitur bagikan hanya tersedia untuk berkas online.");
+            }
         } catch (err) {
-            alert("Gagal menghapus: " + err.message);
+            console.error("Gagal membagikan:", err);
+            modalShareBtn.innerText = "Bagikan";
         }
-    } 
-});
-
-function resetBooth() {
-    audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
-    recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
-    uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
-    guestNameInput.value = "";
-    galleryInput.value = ""; 
-    uploadedImageElement = null;
-    webcamElement.classList.remove('hidden'); 
-    canvasContainer.classList.add('hidden'); 
-    preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
-    switchCameraBtn.classList.remove('hidden');
-    closeBoothBtn.classList.remove('hidden'); 
-    frameUI.classList.remove('hidden'); 
+    });
 }
 
-retakeBtn.addEventListener('click', () => {
-    resetBooth();
-    startWebcam(); 
-});
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => { 
+        galleryModal.classList.add('hidden'); 
+        modalAudio.pause(); 
+    });
+}
+
+if (modalDeleteBtn) {
+    modalDeleteBtn.addEventListener('click', async () => { 
+        if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini dari database?")) { 
+            try {
+                if (supabase) {
+                    const { error } = await supabase
+                        .from('Digipic')
+                        .delete()
+                        .eq('id', activeSelectedId);
+
+                    if (error) throw error;
+                    await fetchGalleryFromSupabase(); 
+                } else {
+                    galleryData = galleryData.filter(p => p.id !== activeSelectedId);
+                    renderGallery();
+                }
+                galleryModal.classList.add('hidden'); 
+            } catch (err) {
+                alert("Gagal menghapus berkas: " + err.message);
+            }
+        } 
+    });
+}
+
+function resetBooth() {
+    if (audioPlayback) { audioPlayback.classList.add('hidden'); audioPlayback.src = ""; }
+    currentAudioBlob = null;
+    if (recordStatus) recordStatus.innerText = "Belum merekam"; 
+    if (recordBtn) recordBtn.innerText = "Mulai Rekam";
+    if (uploadWeddingBtn) { uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false; }
+    if (guestNameInput) guestNameInput.value = "";
+    if (galleryInput) galleryInput.value = ""; 
+    uploadedImageElement = null;
+    if (webcamElement) webcamElement.classList.remove('hidden'); 
+    if (canvasContainer) canvasContainer.classList.add('hidden'); 
+    if (preCaptureAction) preCaptureAction.classList.remove('hidden'); 
+    if (afterCaptureBtn) afterCaptureBtn.classList.add('hidden');
+    if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
+    if (closeBoothBtn) closeBoothBtn.classList.remove('hidden'); 
+    if (frameUI) frameUI.classList.remove('hidden'); 
+}
+
+if (retakeBtn) {
+    retakeBtn.addEventListener('click', () => {
+        resetBooth();
+        startWebcam(); 
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => { 
     fetchGalleryFromSupabase(); 
