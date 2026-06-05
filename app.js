@@ -136,8 +136,10 @@ galleryInput.addEventListener('change', (e) => {
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
                 
-                // Jalankan proses pembentukan gambar
-                captureImage(true); 
+                // Amankan rendering: Berikan jeda 100ms agar decoding internal image selesai sempurna
+                setTimeout(() => {
+                    captureImage(true); 
+                }, 100);
             };
             uploadedImageElement.src = event.target.result;
         };
@@ -259,7 +261,7 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // Sembunyikan video stream asli dari layar
+    // 1. Sembunyikan element kamera langsung
     webcamElement.classList.add('hidden');
 
     if (isUploadedMode && uploadedImageElement) {
@@ -268,6 +270,12 @@ function captureImage(isUploadedMode = false) {
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
         
+        if (targetWidth === 0 || targetHeight === 0) {
+            // Fallback aman jika ukuran gagal dibaca browser mobile
+            targetWidth = 800;
+            targetHeight = 1000;
+        }
+
         if (targetWidth > maxDimension || targetHeight > maxDimension) {
             if (targetWidth > targetHeight) {
                 targetHeight = (maxDimension / targetWidth) * targetHeight;
@@ -278,11 +286,12 @@ function captureImage(isUploadedMode = false) {
             }
         }
         
-        // Inisialisasi resolusi internal canvas
+        // Setup internal resolution canvas
         canvasElement.width = targetWidth;
         canvasElement.height = targetHeight;
         
-        // PERBAIKAN UTAMA: Paksa CSS canvas meregang di layar HP sesuai aspek rasio gambarnya
+        // Force layouting CSS di viewport layar agar terlihat nyata
+        canvasElement.style.setProperty('display', 'block', 'important');
         canvasElement.style.width = "100%";
         canvasElement.style.height = "auto";
         canvasElement.style.aspectRatio = `${targetWidth} / ${targetHeight}`;
@@ -299,7 +308,7 @@ function captureImage(isUploadedMode = false) {
         canvasElement.width = vWidth;
         canvasElement.height = vHeight;
         
-        // Paksa CSS canvas meregang di layar HP sesuai aspek rasio video kamera
+        canvasElement.style.setProperty('display', 'block', 'important');
         canvasElement.style.width = "100%";
         canvasElement.style.height = "auto";
         canvasElement.style.aspectRatio = `${vWidth} / ${vHeight}`;
@@ -366,13 +375,15 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Tampilkan canvas statis ke hadapan layar
+    // 2. Munculkan Canvas ke DOM secara penuh
     canvasElement.classList.remove('hidden');
 
-    // Berikan micro-timeout agar browser mobile sempat melakukan reflow render UI layout
-    setTimeout(() => {
-        drawCanvasFrame(ctx);
-    }, 60);
+    // 3. Eksekusi bingkai dekoratif dengan requestAnimationFrame ganda agar render gambar galeri selesai dulu
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            drawCanvasFrame(ctx);
+        });
+    });
 }
 
 function drawCanvasFrame(ctx) {
@@ -427,11 +438,14 @@ function drawCanvasFrame(ctx) {
     ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
     ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-    canvasElement.toBlob((blob) => { 
-        currentPhotoBlob = blob; 
-        afterCaptureBtn.classList.remove('hidden');
-        initAudioRecorder();
-    }, 'image/png');
+    // SOLUSI ASINKRONUS UTAMA: Berikan jeda 150ms agar browser SELESAI memunculkan visual frame sebelum ditarik datanya menjadi Blob biner
+    setTimeout(() => {
+        canvasElement.toBlob((blob) => { 
+            currentPhotoBlob = blob; 
+            afterCaptureBtn.classList.remove('hidden');
+            initAudioRecorder();
+        }, 'image/png');
+    }, 150);
 }
 
 async function initAudioRecorder() {
