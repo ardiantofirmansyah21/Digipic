@@ -1,6 +1,4 @@
-// ==========================================
-// 1. PENGIKATAN ELEMEN DOM UTAMA
-// ==========================================
+// Pengikatan Elemen DOM Utama
 const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
 const webcamElement = document.getElementById('webcam');
@@ -11,7 +9,6 @@ const retakeBtn = document.getElementById('retakeBtn');
 const shareBtn = document.getElementById('shareBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
-// FIX ID: Diselaraskan dengan ID di index.html yaitu 'weddingGalleryGrid'
 const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
 
 const recordBtn = document.getElementById('recordBtn');
@@ -26,6 +23,7 @@ const galleryModal = document.getElementById('galleryModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalImg = document.getElementById('modalImg');
 const modalAudio = document.getElementById('modalAudio');
+const modalAudioContainer = document.getElementById('modalAudioContainer');
 const noAudioTxt = document.getElementById('noAudioTxt');
 const modalShareBtn = document.getElementById('modalShareBtn');
 const modalDownloadBtn = document.getElementById('modalDownloadBtn');
@@ -60,31 +58,30 @@ const guestNameInput = document.getElementById('guestNameInput');
 const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 
+// DOM Elemen Unggah Galeri
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
-// ==========================================
-// 2. STATE GLOBAL KONTROL APLIKASI
-// ==========================================
+// State Global Kontrol Aplikasi
 let selectedFrameStyle = 'dark'; 
 let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
-let uploadedImageElement = null; 
+let uploadedImageElement = null; // Menyimpan objek gambar dari file galeri
 
+// Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
 
+// Data Gallery Awal Semula (Dummy)
 let galleryData = [
     { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
     { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
 ];
 let activeSelectedId = null;
 
-// ==========================================
-// 3. KONTROL INTERFACE & MODAL EVENT LISTENERS
-// ==========================================
+// Event Listeners Kontrol UI Modals
 openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
@@ -118,27 +115,33 @@ switchCameraBtn.addEventListener('click', () => {
     startWebcam();
 });
 
+// Tombol Utama Buka Modul Kamera Photobooth
 startBoothBtn.addEventListener('click', () => {
     boothSection.classList.remove('hidden');
     startWebcam();
 });
 
+// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
+// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        stopWebcamStream(); 
+        stopWebcamStream(); // Matikan stream kamera demi menghemat memori
         const reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageElement = new Image();
             uploadedImageElement.onload = function() {
+                // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
                 preCaptureAction.classList.add('hidden'); 
                 switchCameraBtn.classList.add('hidden');
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
+                
+                // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
                 captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
@@ -151,7 +154,7 @@ async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
-    uploadedImageElement = null; 
+    uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -168,9 +171,6 @@ async function startWebcam() {
     }
 }
 
-// ==========================================
-// 4. FITUR PENGATURAN FRAME, FILTER & TIMER
-// ==========================================
 window.setTimerOption = function(status) {
     useTimer = status;
     if (useTimer) {
@@ -224,9 +224,6 @@ window.changeFrameStyle = function(style) {
     }
 };
 
-// ==========================================
-// 5. PROSES PENGAMBILAN & PENGOLAHAN GAMBAR
-// ==========================================
 captureBtn.addEventListener('click', () => {
     preCaptureAction.classList.add('hidden'); 
     switchCameraBtn.classList.add('hidden');
@@ -260,14 +257,16 @@ function triggerFlashAndCapture() {
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage(false); 
+        captureImage(false); // Mode normal via stream kamera
     }, 400);
 }
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
+    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
     if (isUploadedMode && uploadedImageElement) {
+        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
@@ -296,6 +295,7 @@ function captureImage(isUploadedMode = false) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     
+    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
     if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
         const blurCanvas = document.createElement('canvas');
         blurCanvas.width = canvasElement.width;
@@ -388,16 +388,18 @@ function captureImage(isUploadedMode = false) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
-    ctx.textAlign = 'center';
-    ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
-    
-    ctx.fillStyle = subTextColors[selectedFrameStyle];
-    ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-    ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+        ctx.textAlign = 'center';
+        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+        
+        ctx.fillStyle = subTextColors[selectedFrameStyle];
+        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-    canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+        canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+    });
 
     webcamElement.classList.add('hidden');
     canvasElement.classList.remove('hidden');
@@ -406,9 +408,6 @@ function captureImage(isUploadedMode = false) {
     initAudioRecorder();
 }
 
-// ==========================================
-// 6. LOGIKA PEREKAMAN AUDIO / SUARA TAMU
-// ==========================================
 async function initAudioRecorder() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -421,7 +420,7 @@ async function initAudioRecorder() {
             audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Pemberian izin akses mikrofon ditolak atau tidak tersedia.");
+        console.log("Pemberian izin akses mikrofon ditolak oleh pengguna.");
     }
 }
 
@@ -434,61 +433,53 @@ recordBtn.addEventListener('click', () => {
     }
 });
 
-// ==========================================
-// 7. FUNGSI UTAMA: TRIGGER SHARE & DOWNLOAD
-// ==========================================
-async function triggerShare(blobFile) {
+function triggerShare(blobFile) {
     if (!blobFile) return;
     const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { 
-        try {
-            await navigator.share({ files: [file], title: "Photobooth Sabrina & Raka" }); 
-        } catch(e) { console.log("Batal membagikan."); }
-    } else {
-        alert("Browser tidak mendukung fitur bagikan file langsung.");
-    }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }); }
 }
-
 function triggerDownload(blobFile) {
     if (!blobFile) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
 }
-
 shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
 downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
-
 modalDownloadBtn.addEventListener('click', () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
     if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
     else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
 });
 
-// ==========================================
-// 8. MANAJEMEN RENDER GALERI KEBAHAGIAAN
-// ==========================================
+// EVENT LISTENER BARU: Integrasi Tombol Bagikan di Dalam Popup Detail Galeri Momen
+if (modalShareBtn) {
+    modalShareBtn.addEventListener('click', async () => {
+        const item = galleryData.find(p => p.id === activeSelectedId);
+        if (!item) return;
+        if (item.rawPhotoBlob) {
+            triggerShare(item.rawPhotoBlob);
+        } else {
+            try {
+                const res = await fetch(item.photoUrl);
+                const blob = await res.blob();
+                triggerShare(blob);
+            } catch(e) {
+                alert("Gagal membagikan gambar.");
+            }
+        }
+    });
+}
+
 function renderGallery() {
     weddingGalleryGrid.innerHTML = "";
-    
-    if (galleryData.length === 0) {
-        weddingGalleryGrid.innerHTML = `<div class="col-span-2 text-center py-6 text-stone-400 text-xs">Belum ada foto.</div>`;
-        return;
-    }
-
     galleryData.forEach(item => {
         const card = document.createElement('div');
         card.className = "bg-white p-2.5 rounded-xl shadow border border-stone-200/60 cursor-pointer transform hover:scale-[1.02] transition-all";
         card.addEventListener('click', () => openGalleryModal(item.id));
-        card.innerHTML = `
-            <div class='overflow-hidden rounded-lg aspect-[3/4]'>
-                <img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'>
-            </div>
-            <p class='text-[9px] font-medium text-stone-500 text-center mt-2 truncate px-1'>${item.label}</p>
-        `;
+        card.innerHTML = `<div class='overflow-hidden rounded-lg aspect-[3/4]'><img src='${item.photoUrl}' class='w-full h-full object-cover' alt='photo'></div><p class='text-[9px] font-medium text-stone-500 text-center mt-2 truncate px-1'>${item.label}</p>`;
         weddingGalleryGrid.appendChild(card);
     });
 }
 
-// Action Kirim ke Galeri Pengantin
 uploadWeddingBtn.addEventListener('click', () => {
     const namaTamu = guestNameInput.value.trim();
     if (namaTamu === "") {
@@ -525,71 +516,22 @@ uploadWeddingBtn.addEventListener('click', () => {
     }, 1000);
 });
 
-// ==========================================
-// 9. LOGIKA MODAL POPUP DETAIL GALERI
-// ==========================================
 function openGalleryModal(id) {
-    const item = galleryData.find(p => p.id === id); 
-    if (!item) return;
-    
-    activeSelectedId = id; 
-    modalImg.src = item.photoUrl;
-    
-    if (item.audioUrl) { 
-        modalAudio.src = item.audioUrl; 
-        modalAudio.classList.remove('hidden'); 
-        noAudioTxt.classList.add('hidden'); 
-    } else { 
-        modalAudio.src = ""; 
-        modalAudio.classList.add('hidden'); 
-        noAudioTxt.classList.remove('hidden'); 
-    }
+    const item = galleryData.find(p => p.id === id); if (!item) return;
+    activeSelectedId = id; modalImg.src = item.photoUrl;
+    if (item.audioUrl) { modalAudio.src = item.audioUrl; modalAudio.classList.remove('hidden'); noAudioTxt.classList.add('hidden'); }
+    else { modalAudio.src = ""; modalAudio.classList.add('hidden'); noAudioTxt.classList.remove('hidden'); }
     galleryModal.classList.remove('hidden');
 }
+closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
+modalDeleteBtn.addEventListener('click', () => { if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { galleryData = galleryData.filter(p => p.id !== activeSelectedId); renderGallery(); galleryModal.classList.add('hidden'); } });
 
-// Event Listener Share didalam modal menggunakan Web Share API / raw file download fallback
-modalShareBtn.addEventListener('click', async () => {
-    const item = galleryData.find(p => p.id === activeSelectedId);
-    if (!item) return;
-
-    if (item.rawPhotoBlob) {
-        triggerShare(item.rawPhotoBlob);
-    } else {
-        try {
-            modalShareBtn.innerText = "Memuat...";
-            const res = await fetch(item.photoUrl);
-            const blob = await res.blob();
-            modalShareBtn.innerText = "Bagikan";
-            triggerShare(blob);
-        } catch(e) {
-            modalShareBtn.innerText = "Bagikan";
-            alert("Tidak dapat membagikan gambar eksternal langsung. Silakan simpan terlebih dahulu.");
-        }
-    }
-});
-
-closeModalBtn.addEventListener('click', () => { 
-    galleryModal.classList.add('hidden'); 
-    modalAudio.pause(); 
-});
-
-modalDeleteBtn.addEventListener('click', () => { 
-    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
-        galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
-        renderGallery(); 
-        galleryModal.classList.add('hidden'); 
-    } 
-});
-
-// ==========================================
-// 10. RESET BOOTH & INISIALISASI
-// ==========================================
 function resetBooth() {
     audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
     recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
     uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
     guestNameInput.value = "";
-    galleryInput.value = ""; 
+    galleryInput.value = ""; // Bersihkan berkas terunggah lama
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
@@ -599,7 +541,7 @@ function resetBooth() {
 
 retakeBtn.addEventListener('click', () => {
     resetBooth();
-    startWebcam(); 
+    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
