@@ -126,7 +126,7 @@ triggerGalleryBtn.addEventListener('click', () => {
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-        stopWebcamStream(); // Matikan kamera agar tidak tabrakan memory saat load file besar
+        stopWebcamStream(); 
         const reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageElement = new Image();
@@ -136,7 +136,7 @@ galleryInput.addEventListener('change', (e) => {
                 closeBoothBtn.classList.add('hidden'); 
                 settingsModal.classList.add('hidden');
                 
-                // Panggil proses canvas khusus mode galeri
+                // Eksekusi pemotretan mode unggah galeri
                 captureImage(true); 
             };
             uploadedImageElement.src = event.target.result;
@@ -257,17 +257,12 @@ function triggerFlashAndCapture() {
 }
 
 // ==========================================
-// PERBAIKAN LOGIKA DETEKSI JALUR FOTO/GALERI
+// FIX REPAINT BUG SAAT PREVIEW BROWSER MOBILE
 // ==========================================
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // Matikan visibilitas preview video, nyalakan layar canvas statis
-    webcamElement.classList.add('hidden');
-    canvasElement.classList.remove('hidden');
-
     if (isUploadedMode && uploadedImageElement) {
-        // --- JALUR 1: JIKA MENGGUNAKAN FOTO DARI GALERI ---
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
@@ -282,19 +277,18 @@ function captureImage(isUploadedMode = false) {
             }
         }
         
-        // Atur dimensi canvas pas sesuai aspek rasio gambar galeri
         canvasElement.width = targetWidth;
         canvasElement.height = targetHeight;
         
-        // Gambar foto galeri ke canvas
+        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
     } else {
-        // --- JALUR 2: JIKA MENGGUNAKAN TAKE PICTURE KAMERA ---
-        webcamElement.pause(); // Bekukan video stream internal
+        webcamElement.pause(); 
         
         canvasElement.width = webcamElement.videoWidth || 640;
         canvasElement.height = webcamElement.videoHeight || 480;
         
+        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         if (currentFacingMode === 'user') {
             ctx.translate(canvasElement.width, 0);
             ctx.scale(-1, 1);
@@ -302,7 +296,6 @@ function captureImage(isUploadedMode = false) {
         ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         
-        // Matikan sensor hardware kamera karena gambar sudah sukses disalin
         stopWebcamStream();
     }
     
@@ -357,8 +350,16 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Lanjutkan membuat dekorasi bingkai pernikahan di atasnya
-    drawCanvasFrame(ctx);
+    // SOLUSI UTAMA: Tukar visibilitas UI dan berikan jeda render frame mikro
+    webcamElement.classList.add('hidden');
+    canvasElement.classList.remove('hidden');
+
+    // Minta browser menggambar grafik secara paksa ke layar viewport sebelum render teks bingkai
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            drawCanvasFrame(ctx);
+        }, 50);
+    });
 }
 
 function drawCanvasFrame(ctx) {
@@ -404,7 +405,6 @@ function drawCanvasFrame(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
-    // Menulis teks secara langsung memanfaatkan font yang telah dimuat di awal
     ctx.fillStyle = textColors[selectedFrameStyle];
     ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
     ctx.textAlign = 'center';
