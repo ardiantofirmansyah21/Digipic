@@ -10,10 +10,10 @@ const shareBtn = document.getElementById('shareBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
 const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
-
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 const audioPlayback = document.getElementById('audioPlayback');
+
 let mediaRecorder;
 let audioChunks = [];
 let currentAudioBlob = null;
@@ -28,7 +28,6 @@ const noAudioTxt = document.getElementById('noAudioTxt');
 const modalShareBtn = document.getElementById('modalShareBtn');
 const modalDownloadBtn = document.getElementById('modalDownloadBtn');
 const modalDeleteBtn = document.getElementById('modalDeleteBtn');
-
 const countdownOverlay = document.getElementById('countdownOverlay');
 const countdownText = document.getElementById('countdownText');
 const frameUI = document.getElementById('frameUI');
@@ -45,16 +44,13 @@ const timerOnBtn = document.getElementById('timerOnBtn');
 const timerOffBtn = document.getElementById('timerOffBtn');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
 const closeBoothBtn = document.getElementById('closeBoothBtn');
-
 const openSettingsBtn = document.getElementById('openSettingsBtn');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const settingsModal = document.getElementById('settingsModal');
-
 const triggerUploadModalBtn = document.getElementById('triggerUploadModalBtn');
 const nameInputModal = document.getElementById('nameInputModal');
 const cancelUploadBtn = document.getElementById('cancelUploadBtn');
 const guestNameInput = document.getElementById('guestNameInput');
-
 const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 
@@ -62,8 +58,7 @@ const successToast = document.getElementById('successToast');
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
-// State Global Kontrol Aplikasi
-let selectedFrameStyle = 'dark'; 
+// State Global Kontrol Aplikasilet selectedFrameStyle = 'dark'; 
 let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
@@ -121,12 +116,12 @@ startBoothBtn.addEventListener('click', () => {
     startWebcam();
 });
 
-// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
+// Handler Trigger klik untuk memilih berkas dari galeri handphone
 triggerGalleryBtn.addEventListener('click', () => {
     galleryInput.click();
 });
 
-// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
+// Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
 galleryInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -264,9 +259,8 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
+    // Menentukan dimensi berdasarkan input gambar
     if (isUploadedMode && uploadedImageElement) {
-        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
         const maxDimension = 1280;
         let targetWidth = uploadedImageElement.width;
         let targetHeight = uploadedImageElement.height;
@@ -346,6 +340,11 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
+    // Lanjutkan proses penggambaran aset pelengkap frame
+    drawCanvasFrame(ctx);
+}
+
+function drawCanvasFrame(ctx) {
     let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
     let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
@@ -388,6 +387,7 @@ function captureImage(isUploadedMode = false) {
     ctx.textAlign = 'center';
     ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
 
+    // Menunggu pemuatan font custom tulisan pengantin selesai
     document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
         ctx.fillStyle = textColors[selectedFrameStyle];
         ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
@@ -398,14 +398,18 @@ function captureImage(isUploadedMode = false) {
         ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
         ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
 
-        canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+        // Melakukan konversi Blob hanya ketika seluruh font selesai digambar
+        canvasElement.toBlob((blob) => { 
+            currentPhotoBlob = blob; 
+            
+            // Konfigurasi interface pasca pemotretan / pengunggahan berkas selesai
+            webcamElement.classList.add('hidden');
+            canvasElement.classList.remove('hidden');
+            afterCaptureBtn.classList.remove('hidden');
+            
+            initAudioRecorder();
+        }, 'image/png');
     });
-
-    webcamElement.classList.add('hidden');
-    canvasElement.classList.remove('hidden');
-    afterCaptureBtn.classList.remove('hidden');
-    
-    initAudioRecorder();
 }
 
 async function initAudioRecorder() {
@@ -438,12 +442,15 @@ function triggerShare(blobFile) {
     const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }); }
 }
+
 function triggerDownload(blobFile) {
     if (!blobFile) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
 }
+
 shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
 downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
+
 modalDownloadBtn.addEventListener('click', () => {
     const item = galleryData.find(p => p.id === activeSelectedId);
     if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
@@ -504,8 +511,16 @@ function openGalleryModal(id) {
     else { modalAudio.src = ""; modalAudio.classList.add('hidden'); noAudioTxt.classList.remove('hidden'); }
     galleryModal.classList.remove('hidden');
 }
+
 closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
-modalDeleteBtn.addEventListener('click', () => { if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { galleryData = galleryData.filter(p => p.id !== activeSelectedId); renderGallery(); galleryModal.classList.add('hidden'); } });
+
+modalDeleteBtn.addEventListener('click', () => { 
+    if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
+        galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
+        renderGallery(); 
+        galleryModal.classList.add('hidden'); 
+    } 
+});
 
 function resetBooth() {
     audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
