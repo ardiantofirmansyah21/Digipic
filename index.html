@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Wedding of Sabrina & Raka</title>
+    <title>Wedding Photobooth</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;500;600;750&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #fcfbf7;
-        }
-        .font-serif-wedding {
-            font-family: 'Playfair Display', serif;
         }
         .font-handwriting {
             font-family: 'Great Vibes', cursive;
@@ -28,62 +24,50 @@
         .filter-vintage { filter: sepia(0.35) contrast(0.95) brightness(1.02); }
     </style>
 </head>
-<body class="text-stone-800 min-h-screen flex flex-col justify-between overflow-x-hidden antialiased">
+<body class="bg-stone-950 text-stone-100 min-h-screen flex flex-col justify-between overflow-x-hidden antialiased">
 
-    <main class="w-full max-w-md mx-auto px-6 flex-1 flex flex-col items-center justify-center text-center pt-12 pb-8">
+    <header class="w-full max-w-md mx-auto pt-4 px-4 text-center z-10 shrink-0">
+        <h1 class="text-xs uppercase tracking-[0.25em] font-bold text-stone-400/80">Virtual Wedding Gift</h1>
+        <p class="text-lg font-bold text-amber-500/90 mt-0.5">Photobooth & Voice Note</p>
+    </header>
+
+    <main class="w-full max-w-md mx-auto px-4 flex-1 flex flex-col justify-center items-center my-2">
         
-        <div class="w-44 h-44 rounded-full overflow-hidden border-4 border-white shadow-md mb-8">
-            <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop" alt="Sabrina & Raka" class="w-full h-full object-cover">
-        </div>
-
-        <h2 class="text-[11px] uppercase tracking-[0.25em] text-amber-800/80 font-semibold mb-2">The Wedding Celebration of</h2>
-        
-        <h1 class="font-serif-wedding text-4xl text-stone-900 font-bold leading-tight mb-6">
-            Sabrina & <br> Raka
-        </h1>
-
-        <div class="flex items-center justify-center gap-4 w-full max-w-[180px] mb-6">
-            <div class="h-[1px] bg-stone-300 flex-1"></div>
-            <div class="w-2 h-2 rotate-45 bg-amber-700"></div>
-            <div class="h-[1px] bg-stone-300 flex-1"></div>
-        </div>
-
-        <p class="text-xs uppercase tracking-widest text-stone-600 font-medium mb-10">
-            Friday, 29 May 2026
-        </p>
-
-        <button id="startBoothBtn" class="w-full max-w-[260px] bg-[#a65215] hover:bg-[#8f430f] text-white font-medium text-sm py-3.5 px-6 rounded-full shadow-md transition-all tracking-wider flex items-center justify-center gap-2 transform active:scale-98">
-            ✨ BUKA PHOTOBOOTH
+        <button id="startBoothBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-bold px-8 py-3.5 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-98">
+            📸 Buka Photobooth
         </button>
 
-        <div id="booth-section" class="w-full hidden flex flex-col items-center mt-8">
+        <div id="booth-section" class="w-full hidden flex flex-col items-center">
             
-            <div class="relative w-full aspect-[3/4] max-w-[310px] mx-auto bg-stone-900 rounded-2xl overflow-hidden shadow-2xl border border-stone-800/80">
+            <div class="relative w-full aspect-[3/4] max-w-[340px] mx-auto bg-stone-900 rounded-2xl overflow-hidden shadow-2xl border border-stone-800/80">
                 
-                <div id="webcam-container" class="absolute inset-0 w-full h-full z-10 block overflow-hidden">
+                <div id="webcam-container" class="absolute inset-0 w-full h-full z-10 block">
                     <video id="webcam" class="w-full h-full object-cover transform -scale-x-100 filter-normal" autoplay playsinline></video>
                     
-                    <div id="frameUI" class="absolute inset-0 border-[10px] border-stone-950 pointer-events-none flex flex-col justify-between p-2.5 transition-all duration-300">
-                        <div id="decorTop" class="w-full flex justify-between text-[9px] text-amber-400/90 font-medium">
+                    <div id="frameUI" class="absolute inset-0 border-[14px] border-stone-950 pointer-events-none flex flex-col justify-between p-3 transition-all duration-300">
+                        <div id="decorTop" class="w-full flex justify-between text-[11px] text-amber-400/90 font-medium">
                             <span>✨ ✦</span><span>✦ ✨</span>
                         </div>
-                        <div id="frameCardInner" class="w-full bg-stone-950/90 backdrop-blur-sm px-3 py-2 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center">
-                            <div class="h-7 w-auto mb-1 flex items-center justify-center">
+                        <div id="frameCardInner" class="w-full bg-stone-950/90 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-stone-800/50 text-center shadow-lg flex flex-col items-center">
+                            <div class="h-10 w-auto mb-1 flex items-center justify-center">
                                 <img src="pengantin.png" alt="Icon" class="h-full w-auto object-contain">
                             </div>
-                            <h2 id="weddingTitle" class="font-handwriting text-xl text-amber-400 font-bold leading-none">Sabrina & Raka</h2>
-                            <p id="weddingDate" class="text-[6px] text-stone-400 font-medium tracking-widest uppercase mt-0.5">29.05.2026 — HAPPY EVER AFTER</p>
-                            <div id="decorBottom" class="text-[7px] text-amber-400/80 mt-0.5">✨ 👑 ✨</div>
+                            <h2 id="weddingTitle" class="font-handwriting text-2xl text-amber-400 font-bold leading-none">Sabrina & Raka</h2>
+                            <p id="weddingDate" class="text-[7px] text-stone-400 font-medium tracking-widest uppercase mt-1">29.05.2026 — HAPPY EVER AFTER</p>
+                            <div id="decorBottom" class="text-[9px] text-amber-400/80 mt-1">✨ 👑 ✨</div>
                         </div>
                     </div>
                 </div>
 
-                <div id="photoPreviewContainer" class="absolute inset-0 w-full h-full bg-stone-950 z-20 hidden flex-col justify-center items-center overflow-hidden">
-                    <img id="previewImage" class="w-full h-full object-contain" src="" alt="Pratinjau Hasil Foto">
+                <div id="photoPreviewContainer" class="absolute inset-0 w-full h-full bg-stone-950 z-20 hidden flex flex-col justify-center items-center p-2">
+                    <img id="previewImage" class="w-full h-full object-contain rounded-lg" src="" alt="Pratinjau Hasil Foto">
+                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-[8px] text-stone-400 font-medium bg-stone-900/95 px-2.5 py-1 rounded-full shadow border border-stone-800 pointer-events-none">
+                        🔍 Ketuk foto untuk Fullscreen
+                    </div>
                 </div>
 
                 <div id="countdownOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-40 hidden">
-                    <span id="countdownText" class="text-6xl font-extrabold text-amber-400 animate-ping">3</span>
+                    <span id="countdownText" class="text-7xl font-extrabold text-amber-400 animate-ping">3</span>
                 </div>
 
                 <div id="flashEffect" class="absolute inset-0 bg-white z-50 hidden opacity-0 transition-opacity duration-200"></div>
@@ -91,13 +75,13 @@
 
             <canvas id="photoCanvas" class="hidden"></canvas>
 
-            <div class="w-full max-w-[310px] mt-4 flex flex-col gap-3 z-30">
+            <div class="w-full max-w-[340px] mt-4 flex flex-col gap-3">
                 
-                <div id="preCaptureAction" class="w-full flex flex-col gap-3">
+                <div id="preCaptureAction" class="w-full flex flex-col gap-3.5">
                     <div class="flex justify-between items-center px-1">
                         <div class="flex gap-1.5 items-center">
-                            <label class="text-[10px] uppercase tracking-wider font-bold text-stone-500">Efek:</label>
-                            <select id="filterSelector" onchange="changeFilter(this.value)" class="bg-white border border-stone-300 text-stone-800 text-xs px-2 py-1 rounded-lg focus:outline-none shadow-xs">
+                            <label class="text-[10px] uppercase tracking-wider font-bold text-stone-400">Efek:</label>
+                            <select id="filterSelector" onchange="changeFilter(this.value)" class="bg-stone-900 border border-stone-800 text-stone-200 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-amber-500">
                                 <option value="normal">Normal</option>
                                 <option value="glowing">Glowing ✨</option>
                                 <option value="flawless">Flawless 🌸</option>
@@ -107,55 +91,59 @@
                             </select>
                         </div>
                         <div class="flex gap-1.5 items-center">
-                            <label class="text-[10px] uppercase tracking-wider font-bold text-stone-500">Tema:</label>
-                            <select id="frameSelector" onchange="changeFrameStyle(this.value)" class="bg-white border border-stone-300 text-stone-800 text-xs px-2 py-1 rounded-lg focus:outline-none shadow-xs">
+                            <label class="text-[10px] uppercase tracking-wider font-bold text-stone-400">Tema:</label>
+                            <select id="frameSelector" onchange="changeFrameStyle(this.value)" class="bg-stone-900 border border-stone-800 text-stone-200 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-amber-500">
                                 <option value="dark">Luxury Dark</option>
                                 <option value="classic">Classic White</option>
                                 <option value="romantic">Romantic Rose</option>
                             </select>
                         </div>
                     </div>
-                    <button id="captureBtn" class="w-full bg-[#a65215] hover:bg-[#8f430f] text-white font-bold py-3 rounded-xl shadow-md text-xs tracking-wider">
-                        📸 AMBIL FOTO (TIMER 3S)
+
+                    <button id="captureBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-bold py-3 rounded-xl shadow-md transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+                        📸 Ambil Foto (Timer 3s)
                     </button>
                 </div>
 
                 <div id="afterCaptureBtn" class="w-full flex flex-col gap-3 hidden">
-                    <div class="bg-white border border-stone-200 p-3 rounded-xl shadow-xs text-center">
-                        <p class="text-[10px] uppercase tracking-wider text-amber-800 font-bold flex items-center justify-center gap-1">
+                    
+                    <div class="bg-stone-900/90 border border-stone-800/80 p-3 rounded-xl shadow-inner text-center">
+                        <p class="text-[10px] uppercase tracking-wider text-amber-500 font-bold flex items-center justify-center gap-1">
                             🎙️ Kirim Doa Suara ke Pengantin
                         </p>
+                        
                         <div class="flex items-center justify-center gap-3 mt-2">
-                            <button id="recordBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all shadow-xs">
+                            <button id="recordBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all active:scale-95 shadow">
                                 Mulai Rekam
                             </button>
-                            <span id="recordStatus" class="text-xs text-stone-500 font-medium">Belum merekam</span>
+                            <span id="recordStatus" class="text-xs text-stone-400 font-medium">Belum merekam</span>
                         </div>
-                        <audio id="audioPlayback" controls class="w-full max-w-[260px] h-8 mx-auto mt-2.5 hidden"></audio>
+                        
+                        <audio id="audioPlayback" controls class="w-full max-w-[280px] h-8 mx-auto mt-2.5 hidden"></audio>
                     </div>
 
                     <div class="grid grid-cols-3 gap-2">
-                        <button id="retakeBtn" class="bg-stone-100 text-stone-700 border border-stone-300 text-xs py-2.5 rounded-lg font-medium shadow-xs">
+                        <button id="retakeBtn" class="bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 text-xs py-2.5 rounded-lg font-medium transition-all active:scale-95">
                             🔄 Ulangi
                         </button>
-                        <button id="shareBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-lg font-medium shadow-xs">
+                        <button id="shareBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-lg font-medium transition-all active:scale-95 shadow">
                             🔗 Bagikan
                         </button>
-                        <button id="downloadBtn" class="bg-amber-700 hover:bg-amber-800 text-white text-xs py-2.5 rounded-lg font-bold shadow-xs">
+                        <button id="downloadBtn" class="bg-amber-600 hover:bg-amber-700 text-stone-950 text-xs py-2.5 rounded-lg font-bold transition-all active:scale-95 shadow">
                             💾 Simpan
                         </button>
                     </div>
 
-                    <button id="triggerUploadModalBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs tracking-wide mt-1 shadow-md">
+                    <button id="triggerUploadModalBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95 text-xs tracking-wide flex items-center justify-center gap-1.5 mt-1">
                         KIRIM KE GALERI PENGANTIN ❤
                     </button>
                 </div>
 
                 <div class="flex justify-between items-center mt-1 px-1">
-                    <button id="switchCameraBtn" class="text-xs text-stone-500 hover:text-stone-800 font-medium py-1 px-2 rounded-md transition-all">
+                    <button id="switchCameraBtn" class="text-xs text-stone-400 hover:text-stone-200 font-medium flex items-center gap-1 py-1 px-2 rounded-md hover:bg-stone-900/60 transition-all">
                         🔄 Balik Kamera
                     </button>
-                    <button id="closeBoothBtn" class="text-xs text-red-600 hover:text-red-800 font-medium py-1 px-2 rounded-md transition-all">
+                    <button id="closeBoothBtn" class="text-xs text-red-400 hover:text-red-300 font-medium flex items-center gap-1 py-1 px-2 rounded-md hover:bg-red-950/20 transition-all">
                         ❌ Tutup Kamera
                     </button>
                 </div>
@@ -163,52 +151,55 @@
         </div>
     </main>
 
-    <section id="gallery-section" class="w-full max-w-md mx-auto px-6 pb-12 mt-4 border-t border-stone-200/60 pt-8">
-        <div class="flex justify-between items-center pb-2 mb-3">
-            <h3 class="text-xs uppercase tracking-widest font-bold text-stone-500">💍 Galeri Kenangan</h3>
-            <button id="triggerGalleryBtn" class="text-[10px] text-amber-800 font-bold hover:underline">
+    <section id="gallery-section" class="w-full max-w-md mx-auto px-4 pb-8 mt-4 shrink-0">
+        <div class="flex justify-between items-center border-b border-stone-800 pb-2 mb-3">
+            <h3 class="text-xs uppercase tracking-widest font-bold text-stone-400">💍 Galeri Kenangan</h3>
+            <button id="triggerGalleryBtn" class="text-[10px] text-amber-500 font-semibold hover:underline">
                 📁 Unggah Foto Manual
             </button>
             <input type="file" id="galleryInput" accept="image/*" class="hidden">
         </div>
-        <div id="weddingGalleryGrid" class="grid grid-cols-2 gap-4"></div>
+        <div id="weddingGalleryGrid" class="grid grid-cols-2 gap-3">
+            </div>
     </section>
 
-    <footer class="w-full text-center py-4 border-t border-stone-200/40 text-[10px] text-stone-400 bg-stone-50">
+    <footer class="w-full text-center py-3 border-t border-stone-900 text-[10px] text-stone-600 shrink-0">
         &copy; 2026 Wedding Digital Invitation. All Rights Reserved.
     </footer>
 
-    <div id="nameInputModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white border border-stone-200 w-full max-w-xs p-5 rounded-2xl shadow-2xl text-center">
-            <h4 class="text-sm font-bold text-stone-900 mb-1">Konfirmasi Pengiriman</h4>
-            <p class="text-[11px] text-stone-500 mb-4">Masukkan nama Anda untuk dicantumkan pada album galeri pernikahan</p>
-            <input type="text" id="guestNameInput" placeholder="Tulis nama lengkap Anda..." class="w-full bg-stone-50 border border-stone-300 text-stone-900 placeholder-stone-400 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-amber-700 mb-4 text-center shadow-xs">
+    <div id="nameInputModal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-stone-900 border border-stone-800 w-full max-w-xs p-5 rounded-2xl shadow-2xl text-center">
+            <h4 class="text-sm font-bold text-amber-400 mb-1">Konfirmasi Pengiriman</h4>
+            <p class="text-[11px] text-stone-400 mb-4">Masukkan nama Anda untuk dicantumkan pada album galeri pernikahan</p>
+            <input type="text" id="guestNameInput" placeholder="Tulis nama lengkap Anda..." class="w-full bg-stone-950 border border-stone-800 text-stone-100 placeholder-stone-600 text-xs px-3 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 mb-4 text-center">
             <div class="flex gap-2">
-                <button id="cancelUploadBtn" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs py-2.5 rounded-xl font-medium border border-stone-300">Batal</button>
-                <button id="uploadWeddingBtn" class="flex-1 bg-amber-700 hover:bg-amber-800 text-white text-xs py-2.5 rounded-xl font-bold shadow-md">Kirim 🚀</button>
+                <button id="cancelUploadBtn" class="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs py-2.5 rounded-xl font-medium transition-all">Batal</button>
+                <button id="uploadWeddingBtn" class="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 text-xs py-2.5 rounded-xl font-bold transition-all shadow">Kirim 🚀</button>
             </div>
         </div>
     </div>
 
     <div id="galleryModal" class="fixed inset-0 bg-black/95 z-50 hidden flex flex-col items-center justify-center p-4">
-        <button id="closeModalBtn" class="absolute top-4 right-4 bg-stone-800 text-stone-200 rounded-full w-9 h-9 flex items-center justify-center text-lg font-bold">&times;</button>
+        <button id="closeModalBtn" class="absolute top-4 right-4 bg-stone-800 text-stone-200 rounded-full w-9 h-9 flex items-center justify-center text-lg font-bold shadow transition-all active:scale-90">&times;</button>
         <div class="max-w-xs w-full flex flex-col items-center">
             <div class="w-full aspect-[3/4] bg-stone-900 rounded-xl overflow-hidden border border-stone-800 shadow-2xl">
-                <img id="modalImg" class="w-full h-full object-contain" src="" alt="Detail Gambar">
+                <img id="modalImg" class="w-full h-full object-cover" src="" alt="Detail Gambar">
             </div>
-            <div class="w-full mt-4 bg-stone-900 border border-stone-800 p-3 rounded-xl text-center">
+            
+            <div class="w-full mt-4 bg-stone-900/90 border border-stone-800 p-3 rounded-xl text-center shadow-md">
                 <p class="text-[10px] uppercase text-amber-400 font-bold mb-1.5 tracking-wider">🎙️ Pesan Suara Pengirim</p>
                 <audio id="modalAudio" controls class="w-full h-8 mx-auto"></audio>
                 <p id="noAudioTxt" class="text-xs text-stone-500 italic py-1 hidden">Pengirim tidak meninggalkan pesan suara.</p>
             </div>
+
             <div class="w-full grid grid-cols-2 gap-2 mt-3">
-                <button id="modalDownloadBtn" class="bg-stone-800 text-stone-200 text-xs py-2.5 rounded-lg font-medium">Unduh Foto</button>
-                <button id="modalDeleteBtn" class="bg-red-950/40 text-red-400 border border-red-900/30 text-xs py-2.5 rounded-lg font-medium">Hapus Foto</button>
+                <button id="modalDownloadBtn" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs py-2.5 rounded-lg font-medium transition-all">Unduh Foto</button>
+                <button id="modalDeleteBtn" class="bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/30 text-xs py-2.5 rounded-lg font-medium transition-all">Hapus Foto</button>
             </div>
         </div>
     </div>
 
-    <div id="successToast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-full z-50 hidden tracking-wide shadow-md">
+    <div id="successToast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-full shadow-xl z-50 hidden tracking-wide animate-bounce">
         ✨ Kenangan Anda berhasil dikirim ke galeri!
     </div>
 
