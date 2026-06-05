@@ -450,25 +450,6 @@ modalDownloadBtn.addEventListener('click', () => {
     else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
 });
 
-// EVENT LISTENER BARU: Integrasi Tombol Bagikan di Dalam Popup Detail Galeri Momen
-if (modalShareBtn) {
-    modalShareBtn.addEventListener('click', async () => {
-        const item = galleryData.find(p => p.id === activeSelectedId);
-        if (!item) return;
-        if (item.rawPhotoBlob) {
-            triggerShare(item.rawPhotoBlob);
-        } else {
-            try {
-                const res = await fetch(item.photoUrl);
-                const blob = await res.blob();
-                triggerShare(blob);
-            } catch(e) {
-                alert("Gagal membagikan gambar.");
-            }
-        }
-    });
-}
-
 function renderGallery() {
     weddingGalleryGrid.innerHTML = "";
     galleryData.forEach(item => {
