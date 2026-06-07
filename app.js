@@ -3,7 +3,6 @@ const startBoothBtn = document.getElementById('startBoothBtn');
 const boothSection = document.getElementById('booth-section');
 const webcamElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('photoCanvas');
-const canvasContainer = document.getElementById('canvasContainer'); 
 const captureBtn = document.getElementById('captureBtn');
 const afterCaptureBtn = document.getElementById('afterCaptureBtn');
 const retakeBtn = document.getElementById('retakeBtn');
@@ -12,10 +11,6 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadWeddingBtn = document.getElementById('uploadWeddingBtn');
 const weddingGalleryGrid = document.getElementById('weddingGalleryGrid');
 
-const fullscreenPreviewModal = document.getElementById('fullscreenPreviewModal');
-const closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
-const fullscreenImg = document.getElementById('fullscreenImg');
-
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 const audioPlayback = document.getElementById('audioPlayback');
@@ -23,7 +18,6 @@ let mediaRecorder;
 let audioChunks = [];
 let currentAudioBlob = null;
 let currentPhotoBlob = null;
-let audioStream = null;
 
 const galleryModal = document.getElementById('galleryModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -39,6 +33,8 @@ const countdownOverlay = document.getElementById('countdownOverlay');
 const countdownText = document.getElementById('countdownText');
 const frameUI = document.getElementById('frameUI');
 const frameCardInner = document.getElementById('frameCardInner');
+const decorTop = document.getElementById('decorTop');
+const decorBottom = document.getElementById('decorBottom');
 const weddingTitle = document.getElementById('weddingTitle');
 const weddingDate = document.getElementById('weddingDate');
 const preCaptureAction = document.getElementById('preCaptureAction');
@@ -62,112 +58,103 @@ const guestNameInput = document.getElementById('guestNameInput');
 const flashEffect = document.getElementById('flashEffect');
 const successToast = document.getElementById('successToast');
 
+// DOM Elemen Unggah Galeri
 const triggerGalleryBtn = document.getElementById('triggerGalleryBtn');
 const galleryInput = document.getElementById('galleryInput');
 
+// State Global Kontrol Aplikasi
 let selectedFrameStyle = 'dark'; 
 let selectedFilter = 'normal';
 let useTimer = true; 
 let currentFacingMode = 'user'; 
 let currentStream = null;
-let uploadedImageElement = null;
+let uploadedImageElement = null; // Menyimpan objek gambar dari file galeri
 
+// Memuat Gambar Aset Pengantin Lokal
 let loadedWeddingAsset = new Image();
 loadedWeddingAsset.src = "pengantin.png"; 
-loadedWeddingAsset.onerror = function() {
-    console.warn("File 'pengantin.png' tidak dapat dimuat di server GitHub Pages.");
-};
 
+// Data Gallery Awal Semula (Dummy)
 let galleryData = [
     { id: "dummy-1", photoUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Oleh: Keluarga Pengantin" },
     { id: "dummy-2", photoUrl: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=400&auto=format&fit=crop", audioUrl: null, label: "✨ Doa Terbaik untuk Kalian" }
 ];
 let activeSelectedId = null;
 
-if (openSettingsBtn) openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+// Event Listeners Kontrol UI Modals
+openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-if (triggerUploadModalBtn) {
-    triggerUploadModalBtn.addEventListener('click', () => {
-        nameInputModal.classList.remove('hidden');
-        guestNameInput.focus();
-    });
-}
-if (cancelUploadBtn) cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
+triggerUploadModalBtn.addEventListener('click', () => {
+    nameInputModal.classList.remove('hidden');
+    guestNameInput.focus();
+});
+cancelUploadBtn.addEventListener('click', () => nameInputModal.classList.add('hidden'));
 
-if (closeBoothBtn) {
-    closeBoothBtn.addEventListener('click', () => {
-        stopWebcamStream();
-        settingsModal.classList.add('hidden');
-        boothSection.classList.add('hidden');
-        resetBooth();
-    });
-}
+closeBoothBtn.addEventListener('click', () => {
+    stopWebcamStream();
+    settingsModal.classList.add('hidden');
+    boothSection.classList.add('hidden');
+    resetBooth();
+});
 
 function stopWebcamStream() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
     }
-    if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
-        audioStream = null;
+}
+
+switchCameraBtn.addEventListener('click', () => {
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+    if (currentFacingMode === 'user') {
+        webcamElement.classList.add('transform', '-scale-x-100');
+    } else {
+        webcamElement.classList.remove('transform', '-scale-x-100');
     }
-}
+    startWebcam();
+});
 
-if (switchCameraBtn) {
-    switchCameraBtn.addEventListener('click', () => {
-        currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-        if (currentFacingMode === 'user') {
-            webcamElement.classList.add('transform', '-scale-x-100');
-        } else {
-            webcamElement.classList.remove('transform', '-scale-x-100');
-        }
-        startWebcam();
-    });
-}
+// Tombol Utama Buka Modul Kamera Photobooth
+startBoothBtn.addEventListener('click', () => {
+    boothSection.classList.remove('hidden');
+    startWebcam();
+});
 
-if (startBoothBtn) {
-    startBoothBtn.addEventListener('click', () => {
-        boothSection.classList.remove('hidden');
-        startWebcam();
-    });
-}
+// PERBAIKAN: Handler Trigger klik untuk memilih berkas dari galeri handphone
+triggerGalleryBtn.addEventListener('click', () => {
+    galleryInput.click();
+});
 
-if (triggerGalleryBtn) {
-    triggerGalleryBtn.addEventListener('click', () => {
-        galleryInput.click();
-    });
-}
-
-if (galleryInput) {
-    galleryInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            stopWebcamStream();
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                uploadedImageElement = new Image();
-                uploadedImageElement.onload = function() {
-                    preCaptureAction.classList.add('hidden'); 
-                    switchCameraBtn.classList.add('hidden');
-                    closeBoothBtn.classList.add('hidden'); 
-                    settingsModal.classList.add('hidden');
-                    frameUI.classList.add('hidden'); 
-                    captureImage(true); 
-                };
-                uploadedImageElement.src = event.target.result;
+// PERBAIKAN: Fungsi penanganan file gambar yang dipilih dari galeri perangkat luar
+galleryInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        stopWebcamStream(); // Matikan stream kamera demi menghemat memori
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            uploadedImageElement = new Image();
+            uploadedImageElement.onload = function() {
+                // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
+                preCaptureAction.classList.add('hidden'); 
+                switchCameraBtn.classList.add('hidden');
+                closeBoothBtn.classList.add('hidden'); 
+                settingsModal.classList.add('hidden');
+                
+                // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
+                captureImage(true); 
             };
-            reader.readAsDataURL(file);
-        }
-    });
-}
+            uploadedImageElement.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
 
 async function startWebcam() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
-    uploadedImageElement = null;
+    uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
     try {
         const constraints = {
             video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -175,19 +162,16 @@ async function startWebcam() {
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         webcamElement.srcObject = currentStream;
+        
         webcamElement.onloadedmetadata = () => {
-            let playPromise = webcamElement.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.log("Autoplay ditunda oleh kebijakan browser:", e));
-            }
+            webcamElement.play().catch(e => console.log("Autoplay ditolak:", e));
         };
     } catch (err) {
-        console.error(err);
-        alert("Gagal memuat kamera. Pastikan Anda telah memberikan izin akses kamera.");
+        alert("Akses kamera ditolak atau perangkat Anda tidak mendukung fitur media stream.");
     }
 }
 
-window.setTimerOption = function(status, evt) {
+window.setTimerOption = function(status) {
     useTimer = status;
     if (useTimer) {
         timerOnBtn.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-lg font-medium text-stone-950";
@@ -198,336 +182,275 @@ window.setTimerOption = function(status, evt) {
     }
 };
 
-window.changeFilter = function(filterType, evt) {
+window.changeFilter = function(filterType) {
     selectedFilter = filterType;
     const buttons = filterSelector.getElementsByTagName('button');
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-1.5 rounded-lg font-medium text-stone-300";
     }
-    if (evt && evt.currentTarget) {
-        evt.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
-    }
-    webcamElement.className = `w-full h-full object-contain ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-1.5 rounded-lg font-medium text-stone-950";
+    webcamElement.className = `w-full h-full object-cover ${currentFacingMode === 'user' ? 'transform -scale-x-100' : ''} filter-${filterType}`;
 };
 
-window.changeFrameStyle = function(style, evt) {
+window.changeFrameStyle = function(style) {
     selectedFrameStyle = style;
     const buttons = frameSelector.getElementsByTagName('button');
     for (let btn of buttons) {
         btn.className = "bg-stone-900/80 border border-stone-700/60 text-[10px] py-2 rounded-xl font-medium text-stone-300";
     }
-    if (evt && evt.currentTarget) {
-        evt.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
-    }
+    event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
 
     if (style === 'dark') {
-        frameCardInner.className = "w-11/12 mx-auto bg-stone-950 bg-opacity-65 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 shadow-lg flex items-center gap-2 mb-2";
-        weddingTitle.className = "font-handwriting text-base text-amber-400 font-bold tracking-wide leading-none truncate";
-        weddingDate.className = "text-[7px] text-stone-300 font-medium tracking-wider mt-0.5 uppercase truncate";
+        frameUI.style.borderColor = '#1c1917';
+        decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
+        decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
+        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
     } else if (style === 'classic') {
-        frameCardInner.className = "w-11/12 mx-auto bg-white bg-opacity-65 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-stone-200 shadow-lg flex items-center gap-2 mb-2";
-        weddingTitle.className = "font-handwriting text-base text-stone-900 font-bold tracking-wide leading-none truncate";
-        weddingDate.className = "text-[7px] text-stone-600 font-medium tracking-wider mt-0.5 uppercase truncate";
+        frameUI.style.borderColor = '#ffffff';
+        decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
+        decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
+        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
     } else if (style === 'romantic') {
-        frameCardInner.className = "w-11/12 mx-auto bg-rose-50 bg-opacity-65 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-rose-200 shadow-lg flex items-center gap-2 mb-2";
-        weddingTitle.className = "font-handwriting text-base text-rose-700 font-bold tracking-wide leading-none truncate";
-        weddingDate.className = "text-[7px] text-rose-900/70 font-medium tracking-wider mt-0.5 uppercase truncate";
+        frameUI.style.borderColor = '#ffe4e6';
+        decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
+        decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
+        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
+        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
+        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
     }
 };
 
-if (captureBtn) {
-    captureBtn.addEventListener('click', () => {
-        preCaptureAction.classList.add('hidden'); 
-        switchCameraBtn.classList.add('hidden');
-        closeBoothBtn.classList.add('hidden'); 
-        settingsModal.classList.add('hidden');
-        frameUI.classList.add('hidden'); 
+captureBtn.addEventListener('click', () => {
+    preCaptureAction.classList.add('hidden'); 
+    switchCameraBtn.classList.add('hidden');
+    closeBoothBtn.classList.add('hidden'); 
+    settingsModal.classList.add('hidden');
+    
+    if (useTimer) {
+        countdownOverlay.classList.remove('hidden');
+        let count = 3;
+        countdownText.innerText = count;
         
-        if (useTimer) {
-            countdownOverlay.classList.remove('hidden');
-            let count = 3;
-            countdownText.innerText = count;
-            let timer = setInterval(() => { 
-                count--; 
-                if (count > 0) { countdownText.innerText = count; } 
-                else { 
-                    clearInterval(timer); 
-                    countdownOverlay.classList.add('hidden'); 
-                    triggerFlashAndCapture(); 
-                } 
-            }, 1000);
-        } else {
-            triggerFlashAndCapture();
-        }
-    });
-}
+        let timer = setInterval(() => { 
+            count--; 
+            if (count > 0) { 
+                countdownText.innerText = count; 
+            } else { 
+                clearInterval(timer); 
+                countdownOverlay.classList.add('hidden'); 
+                triggerFlashAndCapture(); 
+            } 
+        }, 1000);
+    } else {
+        triggerFlashAndCapture();
+    }
+});
 
 function triggerFlashAndCapture() {
     flashEffect.classList.remove('hidden');
     flashEffect.style.opacity = '1';
+    
     setTimeout(() => {
         flashEffect.style.opacity = '0';
         setTimeout(() => { flashEffect.classList.add('hidden'); }, 200);
-        captureImage(false);
+        captureImage(false); // Mode normal via stream kamera
     }, 400);
 }
 
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
-    canvasElement.width = 768;
-    canvasElement.height = 1024;
-
-    try {
-        if (isUploadedMode && uploadedImageElement) {
-            let targetWidth = uploadedImageElement.width;
-            let targetHeight = uploadedImageElement.height;
-            let imgRatio = targetWidth / targetHeight;
-            let canvasRatio = canvasElement.width / canvasElement.height;
-            let drawWidth, drawHeight, drawX, drawY;
-
-            if (imgRatio > canvasRatio) {
-                drawHeight = canvasElement.height;
-                drawWidth = canvasElement.height * imgRatio;
-                drawX = (canvasElement.width - drawWidth) / 2;
-                drawY = 0;
+    
+    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
+    if (isUploadedMode && uploadedImageElement) {
+        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
+        const maxDimension = 1280;
+        let targetWidth = uploadedImageElement.width;
+        let targetHeight = uploadedImageElement.height;
+        
+        if (targetWidth > maxDimension || targetHeight > maxDimension) {
+            if (targetWidth > targetHeight) {
+                targetHeight = (maxDimension / targetWidth) * targetHeight;
+                targetWidth = maxDimension;
             } else {
-                drawWidth = canvasElement.width;
-                drawHeight = canvasElement.width / imgRatio;
-                drawX = 0;
-                drawY = (canvasElement.height - drawHeight) / 2;
+                targetWidth = (maxDimension / targetHeight) * targetWidth;
+                targetHeight = maxDimension;
             }
-            ctx.drawImage(uploadedImageElement, drawX, drawY, drawWidth, drawHeight);
-        } else {
-            ctx.save();
-            if (currentFacingMode === 'user') {
-                ctx.translate(canvasElement.width, 0);
-                ctx.scale(-1, 1);
-            }
-            
-            let videoWidth = webcamElement.videoWidth || 640;
-            let videoHeight = webcamElement.videoHeight || 480;
-            let videoRatio = videoWidth / videoHeight;
-            let targetRatio = canvasElement.width / canvasElement.height;
-            let sx, sy, sWidth, sHeight;
-
-            if (videoRatio > targetRatio) {
-                sHeight = videoHeight;
-                sWidth = videoHeight * targetRatio;
-                sx = (videoWidth - sWidth) / 2;
-                sy = 0;
-            } else {
-                sWidth = videoWidth;
-                sHeight = videoWidth / targetRatio;
-                sx = 0;
-                sy = (videoHeight - sHeight) / 2;
-            }
-
-            ctx.drawImage(webcamElement, sx, sy, sWidth, sHeight, 0, 0, canvasElement.width, canvasElement.height);
-            ctx.restore();
         }
         
-        if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
-            const blurCanvas = document.createElement('canvas');
-            blurCanvas.width = canvasElement.width;
-            blurCanvas.height = canvasElement.height;
-            const blurCtx = blurCanvas.getContext('2d');
-            blurCtx.drawImage(canvasElement, 0, 0);
-            ctx.save();
-            ctx.globalCompositeOperation = 'soft-light'; 
-            ctx.globalAlpha = 0.3; 
-            ctx.filter = 'blur(3px)'; 
-            ctx.drawImage(blurCanvas, 0, 0);
-            ctx.restore();
+        canvasElement.width = targetWidth;
+        canvasElement.height = targetHeight;
+        ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
+    } else {
+        canvasElement.width = webcamElement.videoWidth || 640;
+        canvasElement.height = webcamElement.videoHeight || 480;
+        if (currentFacingMode === 'user') {
+            ctx.translate(canvasElement.width, 0);
+            ctx.scale(-1, 1);
         }
-
-        const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
-        const data = imgData.data;
+        ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    
+    // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
+    if (selectedFilter === 'glowing' || selectedFilter === 'flawless') {
+        const blurCanvas = document.createElement('canvas');
+        blurCanvas.width = canvasElement.width;
+        blurCanvas.height = canvasElement.height;
+        const blurCtx = blurCanvas.getContext('2d');
+        blurCtx.drawImage(canvasElement, 0, 0);
         
-        if (selectedFilter === 'glowing') {
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, data[i] * 1.12 + 12);
-                data[i+1] = Math.min(255, data[i+1] * 1.10 + 10);
-                data[i+2] = Math.min(255, data[i+2] * 1.05 + 5);
-            }
-        } else if (selectedFilter === 'flawless') {
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, data[i] * 1.15 + 10);
-                data[i+1] = Math.min(255, data[i+1] * 1.06 + 5);
-                data[i+2] = Math.min(255, data[i+2] * 1.10 + 6);
-            }
-        } else if (selectedFilter === 'warm') {
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.88;
-            }
-        } else if (selectedFilter === 'bw') {
-            for (let i = 0; i < data.length; i += 4) {
-                let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
-                data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
-            }
-        } else if (selectedFilter === 'vintage') {
-            for (let i = 0; i < data.length; i += 4) {
-                let r = data[i], g = data[i+1], b = data[i+2];
-                data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
-                data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
-                data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
-            }
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        let borderColors = { dark: '#0c0a09', classic: '#ffffff', romantic: '#ffe4e6' };
-        let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
-        let subTextColors = { dark: '#d6d3d1', classic: '#57534e', romantic: '#9f1239' };
-        let bgBoxColors = { dark: 'rgba(12, 10, 9, 0.65)', classic: 'rgba(255, 255, 255, 0.65)', romantic: 'rgba(255, 241, 242, 0.65)' };
-        let innerBorderColors = { dark: 'rgba(255,255,255,0.1)', classic: 'rgba(0,0,0,0.08)', romantic: 'rgba(255,255,255,0.2)' };
-
-        const borderWidth = canvasElement.width * 0.025; 
-        ctx.lineWidth = borderWidth;
-        ctx.strokeStyle = borderColors[selectedFrameStyle];
-        ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
-
-        const boxHeight = canvasElement.height * 0.11;
-        const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.02);
-        const boxX = borderWidth + (canvasElement.width * 0.04);
-        const boxWidth = canvasElement.width - (boxX * 2);
-
-        if (typeof ctx.roundRect === "function") {
-            ctx.fillStyle = bgBoxColors[selectedFrameStyle];
-            ctx.beginPath();
-            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
-            ctx.fill();
-        } else {
-            ctx.fillStyle = bgBoxColors[selectedFrameStyle];
-            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-        }
-        
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = innerBorderColors[selectedFrameStyle];
-        ctx.stroke();
-
-        const paddingBox = 12;
-        const assetHeight = boxHeight - (paddingBox * 2);
-        const assetWidth = assetHeight; 
-        const assetX = boxX + paddingBox + 4;
-        const assetY = boxY + paddingBox;
-
-        if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
-            ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetWidth, assetHeight);
-        }
-
-        const contentStartX = assetX + assetWidth + 16; 
-        let decorSet = {
-            dark: { bottom: "✨ 💕 ✨" },
-            classic: { bottom: "✨ 💕 ✨" },
-            romantic: { bottom: "🎈 ❤️ 🎈" }
-        };
-        let currentDecor = decorSet[selectedFrameStyle];
-
-        const executeDraw = () => {
-            ctx.fillStyle = textColors[selectedFrameStyle];
-            ctx.font = `italic ${canvasElement.width * 0.045}px 'Great Vibes', cursive, sans-serif`; 
-            ctx.textAlign = 'left';
-            ctx.fillText("Sabrina & Raka", contentStartX, boxY + (boxHeight / 2.1));
-            
-            ctx.fillStyle = subTextColors[selectedFrameStyle];
-            ctx.font = `bold ${canvasElement.width * 0.018}px sans-serif`;
-            ctx.fillText("29.05.2026 — HAPPY EVER AFTER", contentStartX, boxY + (boxHeight / 1.4));
-
-            ctx.fillStyle = textColors[selectedFrameStyle];
-            ctx.font = `${canvasElement.width * 0.022}px Arial`;
-            ctx.textAlign = 'right';
-            ctx.fillText(currentDecor.bottom, boxX + boxWidth - paddingBox, boxY + boxHeight / 1.7);
-
-            canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
-        };
-
-        document.fonts.load(`italic ${canvasElement.width * 0.045}px 'Great Vibes'`)
-            .then(executeDraw)
-            .catch(() => {
-                console.warn("Gagal render google fonts. Fallback ke sistem font.");
-                executeDraw();
-            });
-
-    } catch (canvasErr) {
-        console.error("Proses pembuatan gambar canvas eror:", canvasErr);
+        ctx.save();
+        ctx.globalCompositeOperation = 'soft-light'; 
+        ctx.globalAlpha = 0.25; 
+        ctx.filter = 'blur(2px)'; 
+        ctx.drawImage(blurCanvas, 0, 0);
+        ctx.restore();
     }
 
-    if (webcamElement) webcamElement.classList.add('hidden');
-    if (canvasContainer) canvasContainer.classList.remove('hidden');
-    if (afterCaptureBtn) afterCaptureBtn.classList.remove('hidden');
+    const imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+    const data = imgData.data;
+    
+    if (selectedFilter === 'glowing') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15 + 10);
+            data[i+1] = Math.min(255, data[i+1] * 1.12 + 10);
+            data[i+2] = Math.min(255, data[i+2] * 1.08 + 5);
+        }
+    } else if (selectedFilter === 'flawless') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, r * 1.18 + 12);
+            data[i+1] = Math.min(255, g * 1.08 + 5);
+            data[i+2] = Math.min(255, b * 1.12 + 8);
+        }
+    } else if (selectedFilter === 'warm') {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] * 1.15); data[i+1] = Math.min(255, data[i+1] * 1.05); data[i+2] = data[i+2] * 0.9;
+        }
+    } else if (selectedFilter === 'bw') {
+        for (let i = 0; i < data.length; i += 4) {
+            let brightness = 0.34 * data[i] + 0.5 * data[i+1] + 0.16 * data[i+2];
+            data[i] = brightness; data[i+1] = brightness; data[i+2] = brightness;
+        }
+    } else if (selectedFilter === 'vintage') {
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i+1], b = data[i+2];
+            data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189)); 
+            data[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168)); 
+            data[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
+    let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
+    let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
+    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
+
+    const borderWidth = canvasElement.width * 0.04;
+    ctx.lineWidth = borderWidth;
+    ctx.strokeStyle = borderColors[selectedFrameStyle];
+    ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
+
+    const boxHeight = canvasElement.height * 0.16;
+    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
+    const boxX = borderWidth + (canvasElement.width * 0.08);
+    const boxWidth = canvasElement.width - (boxX * 2);
+
+    const assetSize = canvasElement.width * 0.26;
+    const assetX = (canvasElement.width / 2) - (assetSize / 2);
+    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+
+    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
+        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
+    }
+
+    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    let decorSet = {
+        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
+    };
+    let currentDecor = decorSet[selectedFrameStyle];
+
+    ctx.fillStyle = textColors[selectedFrameStyle];
+    ctx.font = `${canvasElement.width * 0.035}px Arial`;
+    ctx.textAlign = 'left';
+    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'right';
+    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
+    ctx.textAlign = 'center';
+    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
+
+    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
+        ctx.fillStyle = textColors[selectedFrameStyle];
+        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
+        ctx.textAlign = 'center';
+        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
+        
+        ctx.fillStyle = subTextColors[selectedFrameStyle];
+        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
+        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+
+        canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
+    });
+
+    webcamElement.classList.add('hidden');
+    canvasElement.classList.remove('hidden');
+    afterCaptureBtn.classList.remove('hidden');
     
     initAudioRecorder();
 }
 
 async function initAudioRecorder() {
     try {
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(audioStream);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
         mediaRecorder.ondataavailable = (event) => { audioChunks.push(event.data); };
         mediaRecorder.onstop = () => {
             currentAudioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-            if (audioPlayback) {
-                audioPlayback.src = URL.createObjectURL(currentAudioBlob);
-                audioPlayback.classList.remove('hidden');
-            }
+            audioPlayback.src = URL.createObjectURL(currentAudioBlob);
+            audioPlayback.classList.remove('hidden');
         };
     } catch (err) {
-        console.log("Akses rekaman suara dilewati.");
+        console.log("Pemberian izin akses mikrofon ditolak oleh pengguna.");
     }
 }
 
-if (recordBtn) {
-    recordBtn.addEventListener('click', () => {
-        if (!mediaRecorder) return alert("Mikrofon belum siap atau ditolak.");
-        if (mediaRecorder.state === "inactive") {
-            audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
-        } else {
-            mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
-        }
-    });
-}
-
-if (canvasContainer) {
-    canvasContainer.addEventListener('click', () => {
-        if (canvasElement) {
-            const dataUrl = canvasElement.toDataURL('image/png');
-            fullscreenImg.src = dataUrl;
-            fullscreenPreviewModal.classList.remove('hidden');
-        }
-    });
-}
-if (closeFullscreenBtn) {
-    closeFullscreenBtn.addEventListener('click', () => {
-        fullscreenPreviewModal.classList.add('hidden');
-    });
-}
+recordBtn.addEventListener('click', () => {
+    if (!mediaRecorder) return alert("Perangkat mikrofon belum siap.");
+    if (mediaRecorder.state === "inactive") {
+        audioChunks = []; mediaRecorder.start(); recordBtn.innerText = "Stop"; recordStatus.innerText = "🔴 Merekam...";
+    } else {
+        mediaRecorder.stop(); recordBtn.innerText = "Rekam Ulang"; recordStatus.innerText = "Selesai!";
+    }
+});
 
 function triggerShare(blobFile) {
     if (!blobFile) return;
     const file = new File([blobFile], "wedding_photobooth.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { 
-        navigator.share({ files: [file] }).catch(e => console.log("Batal share:", e)); 
-    } else {
-        alert("Browser tidak mendukung share langsung. Silakan tekan tombol 'Simpan'.");
-    }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }); }
 }
 function triggerDownload(blobFile) {
     if (!blobFile) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blobFile); a.download = `booth_${Date.now()}.png`; a.click();
 }
-
-if (shareBtn) shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
-if (downloadBtn) downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
-if (modalDownloadBtn) {
-    modalDownloadBtn.addEventListener('click', () => {
-        const item = galleryData.find(p => p.id === activeSelectedId);
-        if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
-        else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
-    });
-}
+shareBtn.addEventListener('click', () => triggerShare(currentPhotoBlob));
+downloadBtn.addEventListener('click', () => triggerDownload(currentPhotoBlob));
+modalDownloadBtn.addEventListener('click', () => {
+    const item = galleryData.find(p => p.id === activeSelectedId);
+    if(item && item.rawPhotoBlob) { triggerDownload(item.rawPhotoBlob); } 
+    else if (item) { const a = document.createElement('a'); a.href = item.photoUrl; a.download = `wedding_${Date.now()}.png`; a.click(); }
+});
 
 function renderGallery() {
-    if (!weddingGalleryGrid) return;
     weddingGalleryGrid.innerHTML = "";
     galleryData.forEach(item => {
         const card = document.createElement('div');
@@ -538,128 +461,69 @@ function renderGallery() {
     });
 }
 
-if (uploadWeddingBtn) {
-    uploadWeddingBtn.addEventListener('click', () => {
-        const namaTamu = guestNameInput.value.trim();
-        if (namaTamu === "") {
-            alert("Nama tidak boleh kosong!");
-            guestNameInput.focus();
-            return;
-        }
+uploadWeddingBtn.addEventListener('click', () => {
+    const namaTamu = guestNameInput.value.trim();
+    if (namaTamu === "") {
+        alert("Nama tidak boleh kosong!");
+        guestNameInput.focus();
+        return;
+    }
 
-        uploadWeddingBtn.innerText = "Mengirim..."; 
-        uploadWeddingBtn.disabled = true;
+    uploadWeddingBtn.innerText = "Mengirim..."; 
+    uploadWeddingBtn.disabled = true;
 
-        setTimeout(() => {
-            const uniqueId = "photo-" + Date.now();
-            const labelNama = `✨ Oleh: ${namaTamu}`;
-            
-            galleryData.unshift({ 
-                id: uniqueId, 
-                photoUrl: URL.createObjectURL(currentPhotoBlob), 
-                audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
-                label: labelNama, 
-                rawPhotoBlob: currentPhotoBlob 
-            });
-            
-            nameInputModal.classList.add('hidden');
-            boothSection.classList.add('hidden'); 
-            
-            successToast.classList.remove('hidden');
-            setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
+    setTimeout(() => {
+        const uniqueId = "photo-" + Date.now();
+        const labelNama = `✨ Oleh: ${namaTamu}`;
+        
+        galleryData.unshift({ 
+            id: uniqueId, 
+            photoUrl: URL.createObjectURL(currentPhotoBlob), 
+            audioUrl: currentAudioBlob ? URL.createObjectURL(currentAudioBlob) : null, 
+            label: labelNama, 
+            rawPhotoBlob: currentPhotoBlob 
+        });
+        
+        nameInputModal.classList.add('hidden');
+        boothSection.classList.add('hidden'); 
+        
+        successToast.classList.remove('hidden');
+        setTimeout(() => { successToast.classList.add('hidden'); }, 3500);
 
-            renderGallery(); 
-            resetBooth();
-            const targetSect = document.getElementById('gallery-section');
-            if (targetSect) targetSect.scrollIntoView({ behavior: 'smooth' });
-        }, 1000);
-    });
-}
+        renderGallery(); 
+        resetBooth();
+        
+        document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
+});
 
 function openGalleryModal(id) {
-    const item = galleryData.find(p => p.id === id); 
-    if (!item) return;
-    
-    activeSelectedId = id; 
-    modalImg.src = item.photoUrl;
-    
-    if (item.audioUrl) { 
-        modalAudio.src = item.audioUrl; 
-        modalAudio.classList.remove('hidden'); 
-        noAudioTxt.classList.add('hidden'); 
-    } else { 
-        modalAudio.src = ""; 
-        modalAudio.classList.add('hidden'); 
-        noAudioTxt.classList.remove('hidden'); 
-    }
-    
+    const item = galleryData.find(p => p.id === id); if (!item) return;
+    activeSelectedId = id; modalImg.src = item.photoUrl;
+    if (item.audioUrl) { modalAudio.src = item.audioUrl; modalAudio.classList.remove('hidden'); noAudioTxt.classList.add('hidden'); }
+    else { modalAudio.src = ""; modalAudio.classList.add('hidden'); noAudioTxt.classList.remove('hidden'); }
     galleryModal.classList.remove('hidden');
 }
-
-if (modalShareBtn) {
-    modalShareBtn.addEventListener('click', async () => {
-        const item = galleryData.find(p => p.id === activeSelectedId);
-        if (!item) return;
-
-        try {
-            if (item.rawPhotoBlob) {
-                triggerShare(item.rawPhotoBlob);
-            } else if (item.photoUrl.startsWith('http')) {
-                modalShareBtn.innerText = "Memuat...";
-                const response = await fetch(item.photoUrl);
-                const blob = await response.blob();
-                modalShareBtn.innerText = "Bagikan";
-                
-                const file = new File([blob], "wedding_gallery.png", { type: "image/png" });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: 'Galeri', text: item.label });
-                }
-            }
-        } catch (err) {
-            modalShareBtn.innerText = "Bagikan";
-        }
-    });
-}
-
-if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
-}
-
-if (modalDeleteBtn) {
-    modalDeleteBtn.addEventListener('click', () => { 
-        if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { 
-            galleryData = galleryData.filter(p => p.id !== activeSelectedId); 
-            renderGallery(); 
-            galleryModal.classList.add('hidden'); 
-        } 
-    });
-}
+closeModalBtn.addEventListener('click', () => { galleryModal.classList.add('hidden'); modalAudio.pause(); });
+modalDeleteBtn.addEventListener('click', () => { if (confirm("Apakah Anda yakin ingin menghapus kenangan foto ini?")) { galleryData = galleryData.filter(p => p.id !== activeSelectedId); renderGallery(); galleryModal.classList.add('hidden'); } });
 
 function resetBooth() {
-    stopWebcamStream();
-    if (audioPlayback) { audioPlayback.classList.add('hidden'); audioPlayback.src = ""; }
-    currentAudioBlob = null;
-    if (recordStatus) recordStatus.innerText = "Belum merekam"; 
-    if (recordBtn) recordBtn.innerText = "Mulai Rekam";
-    if (uploadWeddingBtn) { uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false; }
-    if (guestNameInput) guestNameInput.value = "";
-    if (galleryInput) galleryInput.value = ""; 
+    audioPlayback.classList.add('hidden'); audioPlayback.src = ""; currentAudioBlob = null;
+    recordStatus.innerText = "Belum merekam"; recordBtn.innerText = "Mulai Rekam";
+    uploadWeddingBtn.innerText = "Kirim 🚀"; uploadWeddingBtn.disabled = false;
+    guestNameInput.value = "";
+    galleryInput.value = ""; // Bersihkan berkas terunggah lama
     uploadedImageElement = null;
-    if (webcamElement) webcamElement.classList.remove('hidden'); 
-    if (canvasContainer) canvasContainer.classList.add('hidden'); 
-    if (preCaptureAction) preCaptureAction.classList.remove('hidden'); 
-    if (afterCaptureBtn) afterCaptureBtn.classList.add('hidden');
-    if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
-    if (closeBoothBtn) closeBoothBtn.classList.remove('hidden'); 
-    if (frameUI) frameUI.classList.remove('hidden'); 
+    webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
+    preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    switchCameraBtn.classList.remove('hidden');
+    closeBoothBtn.classList.remove('hidden'); 
 }
 
-if (retakeBtn) {
-    retakeBtn.addEventListener('click', () => {
-        resetBooth();
-        startWebcam(); 
-    });
-}
+retakeBtn.addEventListener('click', () => {
+    resetBooth();
+    startWebcam(); // Hidupkan ulang webcam saat ulangi/retake ditekan
+});
 
 document.addEventListener('DOMContentLoaded', () => { 
     renderGallery(); 
