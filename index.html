@@ -74,30 +74,22 @@
 
         <!-- Area kamera: PORTRAIT 3:4 seperti polaroid, di-center -->
         <div class="flex-1 flex items-center justify-center overflow-hidden bg-stone-950">
-            <!--
-                Struktur polaroid:
-                [  border atas/kiri/kanan (frame)  ]
-                [  VIDEO / CANVAS area foto        ]  ← 3:4
-                [  STRIP BAWAH: pengantin.png + teks ]
-                [  border bawah (frame)             ]
-            -->
             <div id="cameraViewport" class="relative flex flex-col bg-black shadow-2xl"
                  style="width: min(100vw, calc((100dvh - 160px) * 3/4 + 32px)); max-height: calc(100dvh - 160px);">
 
-                <!-- Border frame atas -->
+                <!-- Border frame atas — hanya saat live -->
                 <div id="frameBorderTop" class="flex-shrink-0 h-3 w-full bg-stone-900 transition-colors duration-300"></div>
 
-                <!-- Area foto — strict 3:4 -->
-                <div class="relative w-full" style="aspect-ratio: 3/4; flex-shrink: 0; overflow: hidden;">
+                <!-- Area foto live — strict 3:4, hanya tampil saat kamera aktif -->
+                <div id="liveArea" class="relative w-full" style="aspect-ratio: 3/4; flex-shrink: 0; overflow: hidden;">
                     <video id="webcam" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100 filter-normal" autoplay playsinline muted></video>
-                    <canvas id="photoCanvas" class="hidden absolute inset-0 w-full h-full object-cover"></canvas>
 
                     <!-- Countdown overlay -->
                     <div id="countdownOverlay" class="hidden absolute inset-0 bg-black/50 flex items-center justify-center z-30">
                         <span id="countdownText" class="text-8xl font-bold font-serif text-amber-400 drop-shadow-lg">3</span>
                     </div>
 
-                    <!-- Safe zone corner brackets — HANYA tampil saat live, hilang saat foto diambil -->
+                    <!-- Safe zone corner brackets -->
                     <div id="safeZoneGuide" class="absolute inset-0 pointer-events-none z-10">
                         <div class="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-amber-400/70"></div>
                         <div class="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-amber-400/70"></div>
@@ -105,12 +97,12 @@
                         <div class="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-amber-400/70"></div>
                     </div>
 
-                    <!-- Border kiri & kanan frame -->
+                    <!-- Border kiri & kanan frame live -->
                     <div id="frameBorderSide" class="absolute inset-0 pointer-events-none z-20 transition-all duration-300"
                          style="box-shadow: inset 0 0 0 12px #1c1917;"></div>
                 </div>
 
-                <!-- STRIP BAWAH polaroid: ilustrasi + teks — TIDAK di atas foto -->
+                <!-- STRIP BAWAH polaroid live -->
                 <div id="frameUI" class="flex-shrink-0 w-full flex flex-col items-center justify-center py-2 px-3 transition-colors duration-300 bg-stone-900">
                     <div id="decorTop" class="flex justify-between w-full px-2 text-[9px] text-amber-400 mb-0.5">
                         <span>✨ ✦</span><span>✦ ✨</span>
@@ -129,9 +121,13 @@
                     </div>
                 </div>
 
-                <!-- Border frame bawah -->
+                <!-- Border frame bawah live -->
                 <div id="frameBorderBottom" class="flex-shrink-0 h-3 w-full bg-stone-900 transition-colors duration-300"></div>
             </div>
+
+            <!-- CANVAS POLAROID PREVIEW — muncul setelah foto diambil, fit dalam layar -->
+            <canvas id="photoCanvas" class="hidden cursor-zoom-in rounded shadow-2xl"
+                    style="max-width: 100%; max-height: 100%; object-fit: contain;"></canvas>
         </div>
 
         <!-- Kontrol bawah: natural flow di bawah viewport kamera -->
@@ -252,6 +248,12 @@
                 <button id="modalDeleteBtn" class="bg-red-600/90 text-white text-xs py-2.5 rounded-xl">Hapus</button>
             </div>
         </div>
+    </div>
+
+    <!-- FULLSCREEN POLAROID PREVIEW MODAL -->
+    <div id="fullscreenModal" class="hidden fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4">
+        <button id="closeFullscreenBtn" class="absolute top-4 right-4 bg-stone-800 text-white w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border border-stone-600 shadow-lg z-10">✕</button>
+        <img id="fullscreenImg" src="" alt="Preview Polaroid" class="max-w-full max-h-full object-contain rounded shadow-2xl">
     </div>
 
     <script src="app.js"></script>
