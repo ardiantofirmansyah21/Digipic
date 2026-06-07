@@ -463,8 +463,11 @@ function captureImage(isUploadedMode = false) {
         canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
     });
 
-    // Sembunyikan safe zone saat preview foto
+    // Sembunyikan safe zone & strip HTML saat preview foto (canvas sudah include strip)
     document.getElementById('safeZoneGuide').classList.add('hidden');
+    document.getElementById('frameUI').classList.add('hidden');
+    document.getElementById('frameBorderTop').classList.add('hidden');
+    document.getElementById('frameBorderBottom').classList.add('hidden');
 
     webcamElement.classList.add('hidden');
     canvasElement.classList.remove('hidden');
@@ -583,6 +586,12 @@ function resetBooth() {
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
     const sgGuide = document.getElementById('safeZoneGuide');
     if (sgGuide) sgGuide.classList.remove('hidden');
+    const frameUI = document.getElementById('frameUI');
+    if (frameUI) frameUI.classList.remove('hidden');
+    const fTop = document.getElementById('frameBorderTop');
+    if (fTop) fTop.classList.remove('hidden');
+    const fBot = document.getElementById('frameBorderBottom');
+    if (fBot) fBot.classList.remove('hidden');
 }
 
 retakeBtn.addEventListener('click', () => {
