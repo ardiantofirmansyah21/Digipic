@@ -468,11 +468,11 @@ function captureImage(isUploadedMode = false) {
     document.getElementById('frameUI').classList.add('hidden');
     document.getElementById('frameBorderTop').classList.add('hidden');
     document.getElementById('frameBorderBottom').classList.add('hidden');
-
-    webcamElement.classList.add('hidden');
+    // Sembunyikan seluruh cameraViewport (live frame), tampilkan canvas polaroid standalone
+    document.getElementById('cameraViewport').classList.add('hidden');
     canvasElement.classList.remove('hidden');
     afterCaptureBtn.classList.remove('hidden');
-    
+
     initAudioRecorder();
 }
 
@@ -584,6 +584,7 @@ function resetBooth() {
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    document.getElementById('cameraViewport').classList.remove('hidden');
     const sgGuide = document.getElementById('safeZoneGuide');
     if (sgGuide) sgGuide.classList.remove('hidden');
     const frameUI = document.getElementById('frameUI');
@@ -600,5 +601,17 @@ retakeBtn.addEventListener('click', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => { 
-    renderGallery(); 
+    renderGallery();
+
+    // Fullscreen polaroid preview saat canvas diklik
+    canvasElement.addEventListener('click', () => {
+        const fullscreenModal = document.getElementById('fullscreenModal');
+        const fullscreenImg   = document.getElementById('fullscreenImg');
+        fullscreenImg.src = canvasElement.toDataURL('image/png');
+        fullscreenModal.classList.remove('hidden');
+    });
+
+    document.getElementById('closeFullscreenBtn').addEventListener('click', () => {
+        document.getElementById('fullscreenModal').classList.add('hidden');
+    });
 });
