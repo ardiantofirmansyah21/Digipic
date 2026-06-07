@@ -202,27 +202,45 @@ window.changeFrameStyle = function(style) {
     }
     event.currentTarget.className = "bg-amber-500 border border-amber-500 text-[10px] py-2 rounded-xl font-medium text-stone-950";
 
+    const frameBorderTop    = document.getElementById('frameBorderTop');
+    const frameBorderBottom = document.getElementById('frameBorderBottom');
+    const frameBorderSide   = document.getElementById('frameBorderSide');
+    const frameUI           = document.getElementById('frameUI');
+    const decorTop          = document.getElementById('decorTop');
+    const decorBottom       = document.getElementById('decorBottom');
+    const weddingTitle      = document.getElementById('weddingTitle');
+    const weddingDate       = document.getElementById('weddingDate');
+
     if (style === 'dark') {
-        frameUI.style.borderColor = '#1c1917';
-        decorTop.innerHTML = "<span>✨ ✦</span><span>✦ ✨</span>";
+        const c = '#1c1917';
+        frameBorderTop.style.backgroundColor    = c;
+        frameBorderBottom.style.backgroundColor = c;
+        frameBorderSide.style.boxShadow = `inset 0 0 0 12px ${c}`;
+        frameUI.style.backgroundColor   = '#1c1917';
+        decorTop.innerHTML    = "<span>✨ ✦</span><span>✦ ✨</span>";
         decorBottom.innerHTML = "<span>✨ 👑 ✨</span>";
-        frameCardInner.className = "w-full bg-stone-950/80 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-800 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-amber-400 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-stone-400 font-semibold tracking-widest mt-1";
+        weddingTitle.className = "font-handwriting text-xl text-amber-400 font-bold leading-none";
+        weddingDate.className  = "text-[6px] text-stone-400 font-semibold tracking-widest mt-0.5";
     } else if (style === 'classic') {
-        frameUI.style.borderColor = '#ffffff';
-        decorTop.innerHTML = "<span>🌸 ✦</span><span>✦ 🌸</span>";
+        const c = '#ffffff';
+        frameBorderTop.style.backgroundColor    = c;
+        frameBorderBottom.style.backgroundColor = c;
+        frameBorderSide.style.boxShadow = `inset 0 0 0 12px ${c}`;
+        frameUI.style.backgroundColor   = '#ffffff';
+        decorTop.innerHTML    = "<span>🌸 ✦</span><span>✦ 🌸</span>";
         decorBottom.innerHTML = "<span>✨ 💕 ✨</span>";
-        frameCardInner.className = "w-full bg-white/75 backdrop-blur-md px-6 py-3 rounded-xl border border-stone-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-stone-900 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-stone-500 font-semibold tracking-widest mt-1";
+        weddingTitle.className = "font-handwriting text-xl text-stone-900 font-bold leading-none";
+        weddingDate.className  = "text-[6px] text-stone-500 font-semibold tracking-widest mt-0.5";
     } else if (style === 'romantic') {
-        frameUI.style.borderColor = '#ffe4e6';
-        decorTop.innerHTML = "<span>❤️ ✦</span><span>✦ ❤️</span>";
+        const c = '#ffe4e6';
+        frameBorderTop.style.backgroundColor    = c;
+        frameBorderBottom.style.backgroundColor = c;
+        frameBorderSide.style.boxShadow = `inset 0 0 0 12px ${c}`;
+        frameUI.style.backgroundColor   = '#ffe4e6';
+        decorTop.innerHTML    = "<span>❤️ ✦</span><span>✦ ❤️</span>";
         decorBottom.innerHTML = "<span>🎈 ❤️ 🎈</span>";
-        frameCardInner.className = "w-full bg-rose-50/80 backdrop-blur-md px-6 py-3 rounded-xl border border-rose-200 shadow-xl text-center z-20";
-        weddingTitle.className = "font-handwriting text-3xl text-rose-700 font-bold tracking-wide leading-none my-0.5";
-        weddingDate.className = "text-[8px] text-rose-900/60 font-semibold tracking-widest mt-1";
+        weddingTitle.className = "font-handwriting text-xl text-rose-700 font-bold leading-none";
+        weddingDate.className  = "text-[6px] text-rose-900/60 font-semibold tracking-widest mt-0.5";
     }
 };
 
@@ -264,9 +282,9 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // SELALU gunakan 4:3 untuk output foto
-    const OUTPUT_W = 1280;
-    const OUTPUT_H = 960; // 4:3
+    // SELALU gunakan 3:4 portrait untuk output foto
+    const OUTPUT_W = 960;
+    const OUTPUT_H = 1280; // 3:4 portrait
 
     if (isUploadedMode && uploadedImageElement) {
         canvasElement.width = OUTPUT_W;
@@ -362,60 +380,91 @@ function captureImage(isUploadedMode = false) {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    let borderColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
-    let textColors = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
+    // === POLAROID CANVAS STRUCTURE ===
+    // Canvas total = foto area + strip bawah
+    // Foto area: OUTPUT_W x OUTPUT_H (960x1280, 3:4)
+    // Strip bawah: OUTPUT_W x STRIP_H
+    // Kita rebuild canvas dengan tinggi total = OUTPUT_H + STRIP_H
+
+    const STRIP_H = Math.round(OUTPUT_W * 0.28); // strip ~27% lebar
+    const BORDER  = Math.round(OUTPUT_W * 0.04); // border tipis kiri/kanan/atas
+
+    // Simpan foto hasil filter
+    const photoSnap = document.createElement('canvas');
+    photoSnap.width  = OUTPUT_W;
+    photoSnap.height = OUTPUT_H;
+    photoSnap.getContext('2d').drawImage(canvasElement, 0, 0);
+
+    // Resize canvas jadi polaroid penuh
+    const totalH = OUTPUT_H + STRIP_H;
+    canvasElement.width  = OUTPUT_W;
+    canvasElement.height = totalH;
+    const ctx2 = canvasElement.getContext('2d');
+
+    let borderColors  = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
+    let textColors    = { dark: '#fbbf24', classic: '#1c1917', romantic: '#be123c' };
     let subTextColors = { dark: '#a8a29e', classic: '#57534e', romantic: '#9f1239' };
-    let bgBoxColors = { dark: 'rgba(28, 25, 23, 0.85)', classic: 'rgba(255, 255, 255, 0.8)', romantic: 'rgba(255, 241, 242, 0.85)' };
+    let bgStripColors = { dark: '#1c1917', classic: '#ffffff', romantic: '#ffe4e6' };
 
-    const borderWidth = canvasElement.width * 0.04;
-    ctx.lineWidth = borderWidth;
-    ctx.strokeStyle = borderColors[selectedFrameStyle];
-    ctx.strokeRect(borderWidth/2, borderWidth/2, canvasElement.width - borderWidth, canvasElement.height - borderWidth);
+    // Fill background warna frame
+    ctx2.fillStyle = borderColors[selectedFrameStyle];
+    ctx2.fillRect(0, 0, OUTPUT_W, totalH);
 
-    const boxHeight = canvasElement.height * 0.16;
-    const boxY = canvasElement.height - boxHeight - borderWidth - (canvasElement.height * 0.04);
-    const boxX = borderWidth + (canvasElement.width * 0.08);
-    const boxWidth = canvasElement.width - (boxX * 2);
+    // Gambar foto (dengan border kiri/kanan/atas dari frame)
+    ctx2.drawImage(photoSnap, BORDER, BORDER, OUTPUT_W - BORDER*2, OUTPUT_H - BORDER);
 
-    const assetSize = canvasElement.width * 0.26;
-    const assetX = (canvasElement.width / 2) - (assetSize / 2);
-    const assetY = boxY - assetSize + (canvasElement.height * 0.04);
+    // Fill strip bawah
+    ctx2.fillStyle = bgStripColors[selectedFrameStyle];
+    ctx2.fillRect(0, OUTPUT_H, OUTPUT_W, STRIP_H);
 
-    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
-        ctx.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
-    }
-
-    ctx.fillStyle = bgBoxColors[selectedFrameStyle];
-    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-
+    // Dekor teks strip
     let decorSet = {
-        dark: { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
-        classic: { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
+        dark:     { topL: "✨ ✦", topR: "✦ ✨", bottom: "✨ 👑 ✨" },
+        classic:  { topL: "🌸 ✦", topR: "✦ 🌸", bottom: "✨ 💕 ✨" },
         romantic: { topL: "❤️ ✦", topR: "✦ ❤️", bottom: "🎈 ❤️ 🎈" }
     };
-    let currentDecor = decorSet[selectedFrameStyle];
+    const decor = decorSet[selectedFrameStyle];
+    const stripMidY = OUTPUT_H + STRIP_H / 2;
+    const emojiSize = Math.round(OUTPUT_W * 0.032);
 
-    ctx.fillStyle = textColors[selectedFrameStyle];
-    ctx.font = `${canvasElement.width * 0.035}px Arial`;
-    ctx.textAlign = 'left';
-    ctx.fillText(currentDecor.topL, boxX + 15, boxY + (canvasElement.height * 0.035));
-    ctx.textAlign = 'right';
-    ctx.fillText(currentDecor.topR, boxX + boxWidth - 15, boxY + (canvasElement.height * 0.035));
-    ctx.textAlign = 'center';
-    ctx.fillText(currentDecor.bottom, canvasElement.width / 2, boxY + boxHeight - (canvasElement.height * 0.02));
+    ctx2.font = `${emojiSize}px Arial`;
+    ctx2.fillStyle = textColors[selectedFrameStyle];
+    ctx2.textAlign = 'left';
+    ctx2.fillText(decor.topL, BORDER + 10, OUTPUT_H + emojiSize + 8);
+    ctx2.textAlign = 'right';
+    ctx2.fillText(decor.topR, OUTPUT_W - BORDER - 10, OUTPUT_H + emojiSize + 8);
 
-    document.fonts.load(`italic ${canvasElement.width * 0.085}px 'Great Vibes'`).then(() => {
-        ctx.fillStyle = textColors[selectedFrameStyle];
-        ctx.font = `italic ${canvasElement.width * 0.085}px 'Great Vibes', cursive`; 
-        ctx.textAlign = 'center';
-        ctx.fillText("Sabrina & Raka", canvasElement.width / 2, boxY + (boxHeight / 1.75));
-        
-        ctx.fillStyle = subTextColors[selectedFrameStyle];
-        ctx.font = `bold ${canvasElement.width * 0.023}px sans-serif`;
-        ctx.fillText("29.05.2026 — HAPPY EVER AFTER", canvasElement.width / 2, boxY + (boxHeight / 1.25));
+    // Gambar ilustrasi pengantin di sisi kiri strip
+    const assetSize = Math.round(STRIP_H * 0.85);
+    const assetX = BORDER + 8;
+    const assetY = OUTPUT_H + (STRIP_H - assetSize) / 2;
+    if (loadedWeddingAsset.complete && loadedWeddingAsset.naturalWidth > 0) {
+        ctx2.drawImage(loadedWeddingAsset, assetX, assetY, assetSize, assetSize);
+    }
+
+    // Teks nama & tanggal — di sebelah kanan ilustrasi
+    const textX = assetX + assetSize + 16;
+    document.fonts.load(`italic ${Math.round(OUTPUT_W * 0.072)}px 'Great Vibes'`).then(() => {
+        ctx2.fillStyle = textColors[selectedFrameStyle];
+        ctx2.font = `italic ${Math.round(OUTPUT_W * 0.072)}px 'Great Vibes', cursive`;
+        ctx2.textAlign = 'left';
+        ctx2.fillText("Sabrina & Raka", textX, stripMidY + 8);
+
+        ctx2.fillStyle = subTextColors[selectedFrameStyle];
+        ctx2.font = `bold ${Math.round(OUTPUT_W * 0.022)}px sans-serif`;
+        ctx2.fillText("29.05.2026", textX, stripMidY + Math.round(OUTPUT_W * 0.042));
+        ctx2.fillText("HAPPY EVER AFTER", textX, stripMidY + Math.round(OUTPUT_W * 0.068));
+
+        ctx2.font = `${emojiSize}px Arial`;
+        ctx2.fillStyle = textColors[selectedFrameStyle];
+        ctx2.textAlign = 'center';
+        ctx2.fillText(decor.bottom, OUTPUT_W / 2, OUTPUT_H + STRIP_H - 10);
 
         canvasElement.toBlob((blob) => { currentPhotoBlob = blob; }, 'image/png');
     });
+
+    // Sembunyikan safe zone saat preview foto
+    document.getElementById('safeZoneGuide').classList.add('hidden');
 
     webcamElement.classList.add('hidden');
     canvasElement.classList.remove('hidden');
@@ -532,6 +581,8 @@ function resetBooth() {
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
+    const sgGuide = document.getElementById('safeZoneGuide');
+    if (sgGuide) sgGuide.classList.remove('hidden');
 }
 
 retakeBtn.addEventListener('click', () => {
