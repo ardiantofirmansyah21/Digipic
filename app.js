@@ -137,9 +137,6 @@ galleryInput.addEventListener('change', (e) => {
             uploadedImageElement.onload = function() {
                 // Sembunyikan kontrol pra-pengambilan gambar kamera langsung
                 preCaptureAction.classList.add('hidden'); 
-                switchCameraBtn.classList.add('hidden');
-                closeBoothBtn.classList.add('hidden'); 
-                settingsModal.classList.add('hidden');
                 
                 // Panggil fungsi pemrosesan canvas dengan status true (mode upload)
                 captureImage(true); 
@@ -157,7 +154,12 @@ async function startWebcam() {
     uploadedImageElement = null; // Bersihkan temporary file galeri sebelumnya
     try {
         const constraints = {
-            video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: { 
+                facingMode: currentFacingMode, 
+                width: { ideal: 1280 }, 
+                height: { ideal: 960 },      // 1280x960 = 4:3
+                aspectRatio: { ideal: 4/3 }  // paksa 4:3
+            },
             audio: false
         };
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -226,8 +228,6 @@ window.changeFrameStyle = function(style) {
 
 captureBtn.addEventListener('click', () => {
     preCaptureAction.classList.add('hidden'); 
-    switchCameraBtn.classList.add('hidden');
-    closeBoothBtn.classList.add('hidden'); 
     settingsModal.classList.add('hidden');
     
     if (useTimer) {
@@ -264,35 +264,51 @@ function triggerFlashAndCapture() {
 function captureImage(isUploadedMode = false) {
     const ctx = canvasElement.getContext('2d');
     
-    // PERBAIKAN: Menentukan rasio berdasarkan apakah file di-upload atau memotret langsung
+    // SELALU gunakan 4:3 untuk output foto
+    const OUTPUT_W = 1280;
+    const OUTPUT_H = 960; // 4:3
+
     if (isUploadedMode && uploadedImageElement) {
-        // Jika rasio gambar terlalu ekstrim, batasi resolusi ideal agar memori tidak meluap
-        const maxDimension = 1280;
-        let targetWidth = uploadedImageElement.width;
-        let targetHeight = uploadedImageElement.height;
-        
-        if (targetWidth > maxDimension || targetHeight > maxDimension) {
-            if (targetWidth > targetHeight) {
-                targetHeight = (maxDimension / targetWidth) * targetHeight;
-                targetWidth = maxDimension;
-            } else {
-                targetWidth = (maxDimension / targetHeight) * targetWidth;
-                targetHeight = maxDimension;
-            }
+        canvasElement.width = OUTPUT_W;
+        canvasElement.height = OUTPUT_H;
+        // Crop center dari gambar upload agar pas 4:3
+        const srcW = uploadedImageElement.width;
+        const srcH = uploadedImageElement.height;
+        const srcAspect = srcW / srcH;
+        const dstAspect = OUTPUT_W / OUTPUT_H;
+        let sx = 0, sy = 0, sw = srcW, sh = srcH;
+        if (srcAspect > dstAspect) {
+            sw = srcH * dstAspect;
+            sx = (srcW - sw) / 2;
+        } else {
+            sh = srcW / dstAspect;
+            sy = (srcH - sh) / 2;
         }
-        
-        canvasElement.width = targetWidth;
-        canvasElement.height = targetHeight;
-        ctx.drawImage(uploadedImageElement, 0, 0, canvasElement.width, canvasElement.height);
+        ctx.drawImage(uploadedImageElement, sx, sy, sw, sh, 0, 0, OUTPUT_W, OUTPUT_H);
     } else {
-        canvasElement.width = webcamElement.videoWidth || 640;
-        canvasElement.height = webcamElement.videoHeight || 480;
-        if (currentFacingMode === 'user') {
-            ctx.translate(canvasElement.width, 0);
-            ctx.scale(-1, 1);
+        canvasElement.width = OUTPUT_W;
+        canvasElement.height = OUTPUT_H;
+        // Crop center webcam feed agar tepat 4:3
+        const vw = webcamElement.videoWidth || 1280;
+        const vh = webcamElement.videoHeight || 960;
+        const vAspect = vw / vh;
+        const dstAspect = OUTPUT_W / OUTPUT_H;
+        let sx = 0, sy = 0, sw = vw, sh = vh;
+        if (vAspect > dstAspect) {
+            sw = vh * dstAspect;
+            sx = (vw - sw) / 2;
+        } else {
+            sh = vw / dstAspect;
+            sy = (vh - sh) / 2;
         }
-        ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (currentFacingMode === 'user') {
+            ctx.translate(OUTPUT_W, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(webcamElement, sx, sy, sw, sh, 0, 0, OUTPUT_W, OUTPUT_H);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+        } else {
+            ctx.drawImage(webcamElement, sx, sy, sw, sh, 0, 0, OUTPUT_W, OUTPUT_H);
+        }
     }
     
     // Pemrosesan Filter Efek Piksel Berdasarkan Variabel Terpilih
@@ -516,8 +532,6 @@ function resetBooth() {
     uploadedImageElement = null;
     webcamElement.classList.remove('hidden'); canvasElement.classList.add('hidden');
     preCaptureAction.classList.remove('hidden'); afterCaptureBtn.classList.add('hidden');
-    switchCameraBtn.classList.remove('hidden');
-    closeBoothBtn.classList.remove('hidden'); 
 }
 
 retakeBtn.addEventListener('click', () => {
